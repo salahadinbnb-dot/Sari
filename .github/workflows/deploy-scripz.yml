@@ -44,6 +44,12 @@ jobs:
         # Relative asset URLs (vite.config.ts): the build works under any repo name or domain.
         run: npm run build
 
+      - name: Custom domain (optional)
+        # Set the repository variable PAGES_CUSTOM_DOMAIN (Settings → Secrets and variables →
+        # Actions → Variables) to e.g. scripz.io once the domain's DNS points at GitHub Pages.
+        if: vars.PAGES_CUSTOM_DOMAIN != ''
+        run: echo "${{ vars.PAGES_CUSTOM_DOMAIN }}" > dist/CNAME
+
       # GitHub Pages publishes the gh-pages branch. The build output replaces the
       # branch content on every deploy (the branch holds no source, only the site).
       - name: Publish dist/ to the gh-pages branch

@@ -13,11 +13,13 @@ The site is published from the `gh-pages` branch of this repository (GitHub Page
 - The `gh-pages` branch holds only build output. Never commit to it by hand.
 - The build uses relative asset URLs, so renaming the repository (Settings → General → Repository name, e.g. `scripz`) moves the site to `https://salahadinbnb-dot.github.io/scripz/` immediately, with no rebuild. Renaming and creating repositories are the two GitHub actions that cannot be done from a Claude session.
 
-### Custom domain
+### Custom domain (e.g. scripz.io)
 
-1. Settings → Pages → Custom domain → enter the domain and follow GitHub's DNS instructions (CNAME to `salahadinbnb-dot.github.io`).
-2. In the workflow, set `VITE_BASE_PATH` to `/` (a custom domain serves from the root, not `/Sari/`).
-3. Add a `public/CNAME` file containing the domain so it survives each deploy.
+1. Buy the domain (as of Sept 2026 `scripz.io` and `scripz.co` were unregistered).
+2. At the registrar, add DNS records for GitHub Pages: `A` records for the apex to `185.199.108.153`, `185.199.109.153`, `185.199.110.153`, `185.199.111.153`, and a `CNAME` for `www` to `salahadinbnb-dot.github.io`.
+3. In this repo, Settings → Secrets and variables → Actions → Variables: add `PAGES_CUSTOM_DOMAIN` = the domain. The next deploy writes a `CNAME` file and GitHub Pages picks it up automatically (enable "Enforce HTTPS" in Settings → Pages once the certificate is issued).
+
+No code changes are needed: the build uses relative asset URLs.
 
 ## How it works
 
