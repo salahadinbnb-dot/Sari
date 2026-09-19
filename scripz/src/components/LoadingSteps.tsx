@@ -18,8 +18,8 @@ interface LoadingStepsProps {
 
 export function LoadingSteps({ stage, progress, onCancel }: LoadingStepsProps) {
   const currentIndex = steps.findIndex((s) => s.key === stage);
-  const detail = stage === "transcribing" ? progress?.detail : undefined;
-  const fraction = stage === "transcribing" ? progress?.fraction ?? null : null;
+  const detail = progress?.detail;
+  const fraction = progress?.fraction ?? null;
 
   return (
     <div className="mx-auto w-full max-w-xl animate-fade-in rounded-3xl border border-white/10 bg-card/60 p-6 backdrop-blur-xl sm:p-8">
@@ -79,11 +79,11 @@ export function LoadingSteps({ stage, progress, onCancel }: LoadingStepsProps) {
         </div>
       )}
 
-      {progress?.sub && stage === "transcribing" && (
+      {progress?.sub && (
         <p className="mt-3 text-center text-xs text-muted-foreground">{progress.sub}</p>
       )}
 
-      {progress?.live && stage === "transcribing" && (
+      {progress?.live && (
         <div className="mt-4 max-h-24 overflow-hidden rounded-xl border border-white/10 bg-black/40 p-3 text-left">
           <p className="line-clamp-3 text-xs leading-5 text-muted-foreground">…{progress.live}</p>
         </div>

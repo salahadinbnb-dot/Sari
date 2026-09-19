@@ -74,8 +74,14 @@ async function resample(data: Float32Array, fromRate: number, toRate: number): P
 /** Decode any container the browser understands (mp4/aac, webm/opus, mp3…) to 16 kHz mono. */
 export async function decodeToWhisperPcm(bytes: ArrayBuffer): Promise<{ audio: Float32Array; duration: number }> {
   const Ctor = offlineContext();
-  // Decoding on a 16 kHz context makes most browsers resample for us.
-  const ctx = new Ctor(1, 1, WHISPER_SAMPLE_RATE);
+  // Decoding on a 16 kHz context makes most browsers resample for us; some refuse that rate,
+  // in which case we decode at a standard rate and resample below.
+  let ctx: OfflineAudioContext;
+  try {
+    ctx = new Ctor(1, 1, WHISPER_SAMPLE_RATE);
+  } catch {
+    ctx = new Ctor(1, 1, 44100);
+  }
   let decoded: AudioBuffer;
   try {
     decoded = await ctx.decodeAudioData(bytes);

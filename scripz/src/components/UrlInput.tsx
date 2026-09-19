@@ -1,18 +1,33 @@
 import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ClipboardPaste, Sparkles, Loader2 } from "lucide-react";
+import { ClipboardPaste, Sparkles, Loader2, FileVideo } from "lucide-react";
 
 interface UrlInputProps {
   onSubmit: (url: string) => void;
+  onFile?: (file: File) => void;
   isLoading: boolean;
 }
 
-export function UrlInput({ onSubmit, isLoading }: UrlInputProps) {
+const ACCEPT = "video/*,audio/*,.mp4,.mov,.m4v,.m4a,.mp3,.wav,.webm,.ogg,.aac,.flac";
+
+export function UrlInput({ onSubmit, onFile, isLoading }: UrlInputProps) {
   const [url, setUrl] = useState("");
   const [error, setError] = useState("");
+  const [dragging, setDragging] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
   const autoPastedRef = useRef(false);
+
+  const pickFile = (file: File | undefined | null) => {
+    if (!file || !onFile) return;
+    if (!/^(video|audio)\//.test(file.type) && !/\.(mp4|mov|m4v|m4a|mp3|wav|webm|ogg|aac|flac)$/i.test(file.name)) {
+      setError("Drop a video or audio file (mp4, mov, m4a, mp3, wav, webm…)");
+      return;
+    }
+    setError("");
+    onFile(file);
+  };
 
   const validateUrl = (input: string): boolean => {
     const instagramPattern = /^https?:\/\/(www\.)?instagram\.com\/(reel|p|reels|stories)\/[A-Za-z0-9_-]+/i;
@@ -72,8 +87,27 @@ export function UrlInput({ onSubmit, isLoading }: UrlInputProps) {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="mx-auto w-full max-w-4xl">
-      <div className="relative overflow-hidden rounded-[1.75rem] border border-white/10 bg-card/80 p-3 shadow-2xl backdrop-blur-xl">
+    <form
+      onSubmit={handleSubmit}
+      className="mx-auto w-full max-w-4xl"
+      onDragOver={(e) => {
+        if (!onFile) return;
+        e.preventDefault();
+        setDragging(true);
+      }}
+      onDragLeave={() => setDragging(false)}
+      onDrop={(e) => {
+        if (!onFile) return;
+        e.preventDefault();
+        setDragging(false);
+        pickFile(e.dataTransfer.files?.[0]);
+      }}
+    >
+      <div
+        className={`relative overflow-hidden rounded-[1.75rem] border bg-card/80 p-3 shadow-2xl backdrop-blur-xl transition-colors ${
+          dragging ? "border-primary/60" : "border-white/10"
+        }`}
+      >
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(34,211,238,0.15),transparent_40%)] pointer-events-none" />
 
         <div className="relative z-10 flex flex-col gap-3 rounded-[1.25rem] bg-background/70 p-3 sm:flex-row sm:items-center">
@@ -131,6 +165,33 @@ export function UrlInput({ onSubmit, isLoading }: UrlInputProps) {
           <span className="hidden sm:inline">•</span>
           <span>Free &amp; unlimited · runs on your device</span>
         </div>
+
+        {onFile && (
+          <div className="relative z-10 mt-2 flex items-center justify-center gap-2 text-sm text-muted-foreground">
+            <span>{dragging ? "Drop it!" : "or drop a video / audio file here"}</span>
+            <input
+              ref={fileRef}
+              type="file"
+              accept={ACCEPT}
+              className="hidden"
+              onChange={(e) => {
+                pickFile(e.target.files?.[0]);
+                e.target.value = "";
+              }}
+            />
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              disabled={isLoading}
+              onClick={() => fileRef.current?.click()}
+              className="h-8 gap-1.5 rounded-lg px-2 text-primary hover:text-primary"
+            >
+              <FileVideo className="h-4 w-4" />
+              Choose file
+            </Button>
+          </div>
+        )}
       </div>
 
       {error && <p className="mt-3 text-center text-sm text-destructive animate-fade-in">{error}</p>}

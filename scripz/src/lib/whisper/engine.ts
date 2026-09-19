@@ -1,6 +1,7 @@
 // Main-thread handle for the Whisper worker. Detects WebGPU, falls back to WebAssembly,
 // and turns worker messages into promises + progress callbacks.
 import type { TranscribeOptions, WhisperDevice, WhisperResult, WorkerInbound, WorkerOutbound } from "./types";
+import { isMobileDevice, isSafari } from "@/lib/device";
 
 export interface EngineProgress {
   phase: "model" | "transcribe";
@@ -45,6 +46,9 @@ class WhisperEngine {
     if (this.forcedDevice) return Promise.resolve(this.forcedDevice);
     if (!this.devicePromise) {
       this.devicePromise = (async () => {
+        // WebGPU only pays off on desktop Chromium: Safari compiles the shaders very slowly and
+        // phones would have to download the much larger fp32/q4 model files.
+        if (isSafari() || isMobileDevice()) return "wasm";
         try {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const gpu = (navigator as any).gpu;

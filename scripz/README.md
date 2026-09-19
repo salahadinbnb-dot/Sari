@@ -1,6 +1,6 @@
 # Scripz
 
-Paste an Instagram, YouTube, X or Facebook link → get the transcript, timestamps, SRT subtitles, a PDF and the original video.
+Paste an Instagram, YouTube, X or Facebook link — or drop any video/audio file — and get the transcript, timestamps, SRT subtitles, a PDF and the original video.
 
 Transcription runs **in the visitor's browser** (Whisper via [transformers.js](https://huggingface.co/docs/transformers.js), WebGPU when available, WebAssembly otherwise). There is no API key, no per-minute charge and no usage cap — the only cost is the visitor's own CPU/GPU time and a one-time model download that the browser caches.
 
@@ -27,7 +27,9 @@ The site is published from the `gh-pages` branch of this repository (GitHub Page
 | Audio → text | Browser (Web Worker) | `src/lib/whisper/` — Whisper base (default) or small, chunked with real timestamps. |
 | Fallback | Supabase `transcribe-audio` | Only if the browser can't download/decode a video (e.g. YouTube without captions). Metered; can be switched off in the engine menu. |
 
-The engine menu in the top-right lets a visitor pick quality (Fast = `whisper-base`, Accurate = `whisper-small`), the spoken language, and whether the cloud fallback is allowed. Settings live in `localStorage`.
+The engine menu in the top-right lets a visitor pick the engine (on-device, or the metered cloud transcriber for slow phones), the on-device quality (Fastest = `whisper-tiny`, Balanced = `whisper-base`, Accurate = `whisper-small`), the spoken language, and whether the cloud fallback is allowed. Phones and Safari default to the tiny model on the CPU engine; desktop Chromium uses WebGPU. Settings live in `localStorage`.
+
+YouTube order of routes: platform captions (with retries when the service is rate-limited) → public Piped mirrors (captions, including auto-generated) → mirror audio transcribed on-device → our own download + cloud transcriber → a clear message pointing at the file drop, which always works.
 
 ## Local development
 

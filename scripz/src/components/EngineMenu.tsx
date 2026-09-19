@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ChevronDown, Cpu, ShieldCheck, Zap } from "lucide-react";
+import { ChevronDown, Cloud, Cpu, ShieldCheck, Zap } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -10,11 +10,19 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { getSettings, LANGUAGES, MODELS, saveSettings, type EngineSettings, type ModelChoice } from "@/lib/settings";
+import {
+  getSettings,
+  LANGUAGES,
+  MODELS,
+  saveSettings,
+  type EngineChoice,
+  type EngineSettings,
+  type ModelChoice,
+} from "@/lib/settings";
 import { whisperEngine } from "@/lib/whisper/engine";
 import type { WhisperDevice } from "@/lib/whisper/types";
 
-/** Small control in the nav: shows that transcription runs on-device and lets the user tune it. */
+/** Small control in the nav: shows where transcription runs and lets the visitor tune it. */
 export function EngineMenu() {
   const [settings, setSettings] = useState<EngineSettings>(() => getSettings());
   const [device, setDevice] = useState<WhisperDevice | null>(null);
@@ -30,7 +38,8 @@ export function EngineMenu() {
   }, []);
 
   const update = (patch: Partial<EngineSettings>) => setSettings(saveSettings(patch));
-  const deviceLabel = device === "webgpu" ? "WebGPU" : device === "wasm" ? "CPU" : "…";
+  const onDevice = settings.engine === "device";
+  const deviceLabel = device === "webgpu" ? "GPU" : device === "wasm" ? "CPU" : "…";
   const DeviceIcon = device === "webgpu" ? Zap : Cpu;
 
   return (
@@ -39,23 +48,34 @@ export function EngineMenu() {
         className="inline-flex h-9 items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 text-xs text-muted-foreground backdrop-blur transition-colors hover:border-primary/30 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
         aria-label="Transcription engine settings"
       >
-        <ShieldCheck className="h-3.5 w-3.5 text-primary" />
-        <span className="hidden sm:inline">On-device</span>
-        <span className="inline-flex items-center gap-1 rounded-full bg-white/5 px-1.5 py-0.5 text-[11px]">
-          <DeviceIcon className="h-3 w-3" />
-          {deviceLabel}
-        </span>
+        {onDevice ? <ShieldCheck className="h-3.5 w-3.5 text-primary" /> : <Cloud className="h-3.5 w-3.5 text-primary" />}
+        <span className="hidden sm:inline">{onDevice ? "On-device" : "Cloud"}</span>
+        {onDevice && (
+          <span className="inline-flex items-center gap-1 rounded-full bg-white/5 px-1.5 py-0.5 text-[11px]">
+            <DeviceIcon className="h-3 w-3" />
+            {deviceLabel}
+          </span>
+        )}
         <ChevronDown className="h-3.5 w-3.5 opacity-60" />
       </DropdownMenuTrigger>
 
-      <DropdownMenuContent align="end" className="w-72 rounded-2xl border-white/10 bg-popover/95 backdrop-blur-xl">
-        <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">
-          Transcription runs in your browser — free, unlimited, nothing uploaded.
-          {device === "webgpu" ? " Your GPU is being used." : device === "wasm" ? " Running on the CPU." : ""}
-        </DropdownMenuLabel>
-        <DropdownMenuSeparator />
+      <DropdownMenuContent align="end" className="w-80 rounded-2xl border-white/10 bg-popover/95 backdrop-blur-xl">
+        <DropdownMenuLabel>Engine</DropdownMenuLabel>
+        <DropdownMenuRadioGroup value={settings.engine} onValueChange={(v) => update({ engine: v as EngineChoice })}>
+          <DropdownMenuRadioItem value="device" className="flex-col items-start gap-0.5 rounded-lg">
+            <span className="text-sm">On-device · free, unlimited</span>
+            <span className="text-[11px] leading-4 text-muted-foreground">
+              Runs in your browser{device === "webgpu" ? " on the GPU" : device === "wasm" ? " on the CPU" : ""}. Nothing is uploaded.
+            </span>
+          </DropdownMenuRadioItem>
+          <DropdownMenuRadioItem value="cloud" className="flex-col items-start gap-0.5 rounded-lg">
+            <span className="text-sm">Cloud · faster on slow phones</span>
+            <span className="text-[11px] leading-4 text-muted-foreground">Uses the metered cloud transcriber. Not available for local files.</span>
+          </DropdownMenuRadioItem>
+        </DropdownMenuRadioGroup>
 
-        <DropdownMenuLabel>Quality</DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        <DropdownMenuLabel>On-device quality</DropdownMenuLabel>
         <DropdownMenuRadioGroup value={settings.model} onValueChange={(v) => update({ model: v as ModelChoice })}>
           {(Object.keys(MODELS) as ModelChoice[]).map((key) => (
             <DropdownMenuRadioItem key={key} value={key} className="flex-col items-start gap-0.5 rounded-lg">
@@ -67,7 +87,7 @@ export function EngineMenu() {
 
         <DropdownMenuSeparator />
         <DropdownMenuLabel>Spoken language</DropdownMenuLabel>
-        <div className="max-h-44 overflow-y-auto">
+        <div className="max-h-40 overflow-y-auto">
           <DropdownMenuRadioGroup value={settings.language} onValueChange={(v) => update({ language: v })}>
             {LANGUAGES.map((l) => (
               <DropdownMenuRadioItem key={l.code} value={l.code} className="rounded-lg text-sm">
@@ -85,7 +105,7 @@ export function EngineMenu() {
         >
           <span className="text-sm">Cloud fallback</span>
           <span className="text-[11px] leading-4 text-muted-foreground">
-            Only if the browser can't download or decode a video. Uses the metered cloud transcriber.
+            If the browser can't download or decode a video, finish it in the cloud instead of failing.
           </span>
         </DropdownMenuCheckboxItem>
       </DropdownMenuContent>

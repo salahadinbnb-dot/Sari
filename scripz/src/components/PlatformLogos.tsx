@@ -50,11 +50,22 @@ export function FacebookLogo({ className = "h-4 w-4" }: { className?: string }) 
   );
 }
 
+export function FileLogo({ className = "h-4 w-4" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} aria-hidden="true">
+      <path d="M6 3h8l5 5v13a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z" fill="#334155" />
+      <path d="M14 3v5h5" fill="#64748b" />
+      <path d="M10 11.5v6l5-3-5-3Z" fill="white" />
+    </svg>
+  );
+}
+
 export const platformMeta: Record<SourceType, { label: string; Logo: (p: { className?: string }) => JSX.Element }> = {
   instagram: { label: "Instagram", Logo: InstagramLogo },
   youtube: { label: "YouTube", Logo: YouTubeLogo },
   twitter: { label: "X", Logo: XLogo },
   facebook: { label: "Facebook", Logo: FacebookLogo },
+  file: { label: "File", Logo: FileLogo },
 };
 
 export function PlatformBadge({ source, className = "" }: { source: SourceType; className?: string }) {

@@ -13,15 +13,20 @@ import type { HistoryItem, SourceType } from "@/types/history";
 import {
   fetchInstagramReel,
   transcribeMedia,
-  fetchYouTubeTranscript,
+  transcribeLocalFile,
+  fetchYouTubeTranscriptWithRetry,
   fetchTwitterVideo,
   fetchFacebookReel,
   downloadYouTubeVideo,
   detectSourceType,
   extractYouTubeId,
+  type MediaTranscript,
   type TranscribeProgress,
 } from "@/lib/api";
+import { fetchYouTubeFromMirrors } from "@/lib/youtubeMirrors";
 import { whisperEngine } from "@/lib/whisper/engine";
+import { getSettings, MODELS } from "@/lib/settings";
+import { prefersReducedData } from "@/lib/device";
 
 type Stage = "idle" | "fetching" | "transcribing" | "complete";
 
@@ -31,6 +36,10 @@ interface Media {
   thumbnailUrl?: string;
   shortcode: string;
 }
+
+const YOUTUBE_DEAD_END =
+  "YouTube blocked every route for this video: no captions anywhere and it refused the download. " +
+  "Save the video to your device and drop the file into Scripz — that always works.";
 
 export default function Index() {
   const [stage, setStage] = useState<Stage>("idle");
@@ -45,11 +54,20 @@ export default function Index() {
   const [progress, setProgress] = useState<TranscribeProgress | null>(null);
 
   const mediaRef = useRef<Media | null>(null);
+  const fileRef = useRef<File | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const runRef = useRef(0);
   const { history, addToHistory, deleteFromHistory, clearHistory } = useTranscriptHistory();
 
   useEffect(() => () => abortRef.current?.abort(), []);
+
+  // Start the one-time model download as soon as the page is idle so the first transcript is quick.
+  useEffect(() => {
+    const settings = getSettings();
+    if (settings.engine !== "device" || prefersReducedData()) return;
+    const timer = setTimeout(() => void whisperEngine.preload(MODELS[settings.model].id), 1500);
+    return () => clearTimeout(timer);
+  }, []);
 
   const persist = useCallback(
     (args: {
@@ -79,7 +97,21 @@ export default function Index() {
     const controller = new AbortController();
     abortRef.current = controller;
     runRef.current += 1;
-    return { controller, run: runRef.current };
+    const run = runRef.current;
+    return { controller, stillCurrent: () => run === runRef.current && !controller.signal.aborted };
+  };
+
+  const resetWorkspace = (url: string, source: SourceType) => {
+    setCurrentUrl(url);
+    setSourceType(source);
+    setFatalError(null);
+    setTranscriptError(null);
+    setTranscript("");
+    setTimestampedTranscript("");
+    setMedia(null);
+    setProgress(null);
+    mediaRef.current = null;
+    fileRef.current = null;
   };
 
   const runPipeline = useCallback(
@@ -90,101 +122,104 @@ export default function Index() {
         return;
       }
 
-      const { controller, run } = startRun();
-      const stillCurrent = () => run === runRef.current && !controller.signal.aborted;
-
-      setCurrentUrl(url);
-      setSourceType(source);
-      setFatalError(null);
-      setTranscriptError(null);
-      setTranscript("");
-      setTimestampedTranscript("");
-      setMedia(null);
-      setProgress(null);
-      mediaRef.current = null;
+      const { controller, stillCurrent } = startRun();
+      resetWorkspace(url, source);
       setStage("fetching");
 
       const onProgress = (p: TranscribeProgress) => {
         if (stillCurrent()) setProgress(p);
       };
+      const status = (detail: string) => onProgress({ phase: "download", fraction: null, detail });
+
+      const finish = (m: Media, result: { transcript: string; timestampedTranscript?: string }, message: string) => {
+        setTranscript(result.transcript);
+        setTimestampedTranscript(result.timestampedTranscript || "");
+        setStage("complete");
+        persist({
+          url,
+          source,
+          transcript: result.transcript,
+          timestamped: result.timestampedTranscript,
+          thumbnailUrl: m.thumbnailUrl,
+          videoUrl: m.videoUrl,
+          shortcode: m.shortcode,
+        });
+        toast.success(message);
+      };
+
+      const readyMessage = (r: MediaTranscript) =>
+        r.engine === "device" ? "Transcript ready — done on your device" : "Transcript ready";
 
       try {
         if (source === "youtube") {
           const videoId = extractYouTubeId(url);
           const watchUrl = videoId ? `https://www.youtube.com/watch?v=${videoId}` : url;
-          const thumbnailUrl = videoId ? `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg` : undefined;
-
-          // Primary (fast): platform captions
-          try {
-            const yt = await fetchYouTubeTranscript(url);
-            if (!stillCurrent()) return;
-            const m: Media = {
-              videoUrl: `https://www.youtube.com/watch?v=${yt.videoId}`,
-              thumbnailUrl: yt.thumbnailUrl,
-              shortcode: yt.videoId,
-            };
-            setMedia(m);
-            mediaRef.current = m;
-            setTranscript(yt.transcript);
-            setTimestampedTranscript(yt.timestampedTranscript || "");
-            setStage("complete");
-            persist({
-              url,
-              source,
-              transcript: yt.transcript,
-              timestamped: yt.timestampedTranscript,
-              thumbnailUrl: yt.thumbnailUrl,
-              videoUrl: m.videoUrl,
-              shortcode: yt.videoId,
-            });
-            toast.success("Transcript ready");
-            return;
-          } catch {
-            console.log("No captions — falling back to our own transcription");
-          }
-          if (!stillCurrent()) return;
-
-          // Fallback: resolve a direct mp4 and transcribe it ourselves
-          const m: Media = { videoUrl: watchUrl, thumbnailUrl, shortcode: videoId };
+          const m: Media = {
+            videoUrl: watchUrl,
+            thumbnailUrl: videoId ? `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg` : undefined,
+            shortcode: videoId,
+          };
           setMedia(m);
           mediaRef.current = m;
 
-          let directUrl: string;
-          try {
-            const dl = await downloadYouTubeVideo(url);
-            directUrl = dl.downloadUrl;
-          } catch {
-            if (!stillCurrent()) return;
-            setStage("complete");
-            setTranscriptError(
-              "This video has no captions and we couldn't pull the media file to transcribe it. Try again in a moment.",
-            );
+          // 1. Platform captions (fast path), retrying if the service is rate-limited.
+          status("Fetching captions…");
+          const yt = await fetchYouTubeTranscriptWithRetry(url, status);
+          if (!stillCurrent()) return;
+          if (yt) {
+            finish(m, yt, "Transcript ready");
             return;
           }
-          if (!stillCurrent()) return;
 
-          mediaRef.current = { ...m, transcriptionVideoUrl: directUrl };
-          setMedia(mediaRef.current);
-          setStage("transcribing");
-          const result = await transcribeMedia(watchUrl, directUrl, { onProgress, signal: controller.signal });
+          // 2. Public mirrors: captions (manual or auto-generated), and audio when they still serve it.
+          status("No captions from the main service — checking public mirrors…");
+          const mirror = await fetchYouTubeFromMirrors(videoId, getSettings().language).catch(() => null);
           if (!stillCurrent()) return;
-          setTranscript(result.transcript);
-          setTimestampedTranscript(result.timestampedTranscript);
+          if (mirror?.captions) {
+            finish(m, mirror.captions, "Transcript ready");
+            return;
+          }
+
+          setStage("transcribing");
+
+          // 3. Mirror audio → transcribed here on the device.
+          if (mirror?.audioUrl) {
+            try {
+              const r = await transcribeMedia(watchUrl, mirror.audioUrl, { onProgress, signal: controller.signal });
+              if (!stillCurrent()) return;
+              mediaRef.current = { ...m, transcriptionVideoUrl: mirror.audioUrl };
+              finish(m, r, readyMessage(r));
+              return;
+            } catch (e) {
+              if (!stillCurrent()) return;
+              console.warn("Mirror audio route failed:", e);
+            }
+          }
+
+          // 4. Our own download + transcription (falls back to the cloud transcriber).
+          try {
+            status("Trying to pull the media file…");
+            const dl = await downloadYouTubeVideo(url);
+            if (!stillCurrent()) return;
+            mediaRef.current = { ...m, transcriptionVideoUrl: dl.downloadUrl };
+            setMedia(mediaRef.current);
+            const r = await transcribeMedia(watchUrl, dl.downloadUrl, { onProgress, signal: controller.signal });
+            if (!stillCurrent()) return;
+            finish(m, r, readyMessage(r));
+            return;
+          } catch (e) {
+            if (!stillCurrent()) return;
+            console.warn("Download route failed:", e);
+          }
+
+          // 5. Honest dead end with the route that always works.
           setStage("complete");
-          persist({
-            url,
-            source,
-            transcript: result.transcript,
-            timestamped: result.timestampedTranscript,
-            thumbnailUrl,
-            videoUrl: watchUrl,
-            shortcode: videoId,
-          });
-          toast.success(result.engine === "device" ? "Transcript ready — done on your device" : "Transcript ready");
+          setTranscriptError(YOUTUBE_DEAD_END);
           return;
         }
 
         // Instagram / X / Facebook — extract, then transcribe
+        status("Finding the best source…");
         let m: Media;
         if (source === "instagram") {
           const ig = await fetchInstagramReel(url);
@@ -208,28 +243,14 @@ export default function Index() {
         setStage("transcribing");
 
         try {
-          const result = await transcribeMedia(m.videoUrl, m.transcriptionVideoUrl, { onProgress, signal: controller.signal });
+          const r = await transcribeMedia(m.videoUrl, m.transcriptionVideoUrl, { onProgress, signal: controller.signal });
           if (!stillCurrent()) return;
-          setTranscript(result.transcript);
-          setTimestampedTranscript(result.timestampedTranscript);
-          setStage("complete");
-          persist({
-            url,
-            source,
-            transcript: result.transcript,
-            timestamped: result.timestampedTranscript,
-            thumbnailUrl: m.thumbnailUrl,
-            videoUrl: m.videoUrl,
-            shortcode: m.shortcode,
-          });
-          toast.success(result.engine === "device" ? "Transcript ready — done on your device" : "Transcript ready");
+          finish(m, r, readyMessage(r));
         } catch (e) {
           if (!stillCurrent()) return;
           // Extraction worked — keep the video, surface a retry for the transcript only
           setStage("complete");
-          setTranscriptError(
-            e instanceof Error ? e.message : "Transcription failed. Your video is still available below.",
-          );
+          setTranscriptError(e instanceof Error ? e.message : "Transcription failed. Your video is still available below.");
           toast.error("Transcription failed — the video is still ready to watch and download");
         }
       } catch (error) {
@@ -237,10 +258,44 @@ export default function Index() {
         console.error("Pipeline error:", error);
         setStage("idle");
         setFatalError(
-          error instanceof Error
-            ? `We couldn't fetch the video (${error.message}).`
-            : "We couldn't fetch the video from this link.",
+          error instanceof Error ? `We couldn't fetch the video (${error.message}).` : "We couldn't fetch the video from this link.",
         );
+      } finally {
+        if (stillCurrent()) setProgress(null);
+      }
+    },
+    [persist],
+  );
+
+  /** A video/audio file from the visitor's device: always transcribed locally, no captions needed. */
+  const runFile = useCallback(
+    async (file: File) => {
+      const { controller, stillCurrent } = startRun();
+      resetWorkspace(file.name, "file");
+      fileRef.current = file;
+      const m: Media = { videoUrl: URL.createObjectURL(file), shortcode: `file-${file.name}-${file.size}` };
+      setMedia(m);
+      mediaRef.current = m;
+      setStage("transcribing");
+
+      try {
+        const r = await transcribeLocalFile(file, {
+          onProgress: (p) => {
+            if (stillCurrent()) setProgress(p);
+          },
+          signal: controller.signal,
+        });
+        if (!stillCurrent()) return;
+        setTranscript(r.transcript);
+        setTimestampedTranscript(r.timestampedTranscript);
+        setStage("complete");
+        // Object URLs do not survive a reload, so the library keeps the text only.
+        persist({ url: file.name, source: "file", transcript: r.transcript, timestamped: r.timestampedTranscript, shortcode: m.shortcode });
+        toast.success("Transcript ready — done on your device");
+      } catch (e) {
+        if (!stillCurrent()) return;
+        setStage("complete");
+        setTranscriptError(e instanceof Error ? e.message : "Transcription failed. Please try again.");
       } finally {
         if (stillCurrent()) setProgress(null);
       }
@@ -251,17 +306,16 @@ export default function Index() {
   const handleRetryTranscript = useCallback(async () => {
     const m = mediaRef.current;
     if (!m) return;
-    const { controller, run } = startRun();
-    const stillCurrent = () => run === runRef.current && !controller.signal.aborted;
+    const { controller, stillCurrent } = startRun();
     setIsRetrying(true);
     setTranscriptError(null);
+    const onProgress = (p: TranscribeProgress) => {
+      if (stillCurrent()) setProgress(p);
+    };
     try {
-      const result = await transcribeMedia(m.videoUrl, m.transcriptionVideoUrl, {
-        onProgress: (p) => {
-          if (stillCurrent()) setProgress(p);
-        },
-        signal: controller.signal,
-      });
+      const result = fileRef.current
+        ? await transcribeLocalFile(fileRef.current, { onProgress, signal: controller.signal })
+        : await transcribeMedia(m.videoUrl, m.transcriptionVideoUrl, { onProgress, signal: controller.signal });
       if (!stillCurrent()) return;
       setTranscript(result.transcript);
       setTimestampedTranscript(result.timestampedTranscript);
@@ -272,7 +326,7 @@ export default function Index() {
           transcript: result.transcript,
           timestamped: result.timestampedTranscript,
           thumbnailUrl: m.thumbnailUrl,
-          videoUrl: m.videoUrl,
+          videoUrl: sourceType === "file" ? undefined : m.videoUrl,
           shortcode: m.shortcode,
         });
       }
@@ -297,6 +351,7 @@ export default function Index() {
     };
     setMedia(m);
     mediaRef.current = m;
+    fileRef.current = null;
     setTranscript(item.transcript);
     setTimestampedTranscript(item.timestampedTranscript || "");
     setCurrentUrl(item.url);
@@ -316,6 +371,7 @@ export default function Index() {
     setTimestampedTranscript("");
     setMedia(null);
     mediaRef.current = null;
+    fileRef.current = null;
     setCurrentUrl("");
     setSourceType(null);
     setFatalError(null);
@@ -347,7 +403,7 @@ export default function Index() {
         {stage === "idle" && (
           <>
             <Hero />
-            <UrlInput onSubmit={runPipeline} isLoading={isLoading} />
+            <UrlInput onSubmit={runPipeline} onFile={runFile} isLoading={isLoading} />
 
             {fatalError && (
               <div className="mx-auto mt-6 flex max-w-2xl flex-col items-center gap-3 rounded-2xl border border-destructive/30 bg-destructive/10 p-5 text-center sm:flex-row sm:text-left">

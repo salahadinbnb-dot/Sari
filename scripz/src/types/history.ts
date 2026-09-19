@@ -1,4 +1,4 @@
-export type SourceType = 'instagram' | 'youtube' | 'twitter' | 'facebook';
+export type SourceType = 'instagram' | 'youtube' | 'twitter' | 'facebook' | 'file';
 
 export interface HistoryItem {
   id: string;
