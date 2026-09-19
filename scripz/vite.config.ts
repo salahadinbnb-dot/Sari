@@ -29,8 +29,9 @@ function scrubSecretLookalikes(): Plugin {
 
 // https://vitejs.dev/config/
 export default defineConfig(() => ({
-  // GitHub Pages serves project sites under /<repo>/ — the deploy workflow sets VITE_BASE_PATH.
-  base: process.env.VITE_BASE_PATH || "/",
+  // Relative asset URLs: the same build works under /Sari/, /scripz/ (after a repo rename) or a
+  // custom domain root without rebuilding. Set VITE_BASE_PATH to force an absolute base.
+  base: process.env.VITE_BASE_PATH || "./",
   server: {
     host: "::",
     port: 8080,

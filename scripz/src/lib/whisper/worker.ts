@@ -8,8 +8,12 @@ const ctx = self as unknown as DedicatedWorkerGlobalScope;
 
 env.allowLocalModels = false;
 env.useBrowserCache = true;
-// The ONNX Runtime WebAssembly binaries are copied into public/ort/ at build time (scripts/copy-ort-wasm.mjs).
-env.backends.onnx.wasm!.wasmPaths = `${ctx.location.origin}${import.meta.env.BASE_URL}ort/`;
+// The ONNX Runtime WebAssembly binaries are copied into public/ort/ at build time
+// (scripts/copy-ort-wasm.mjs). In production this worker lives at <site>/assets/worker-*.js,
+// so <site>/ort/ is one level up; in dev the worker is served from /src/... so use the root.
+env.backends.onnx.wasm!.wasmPaths = import.meta.env.DEV
+  ? `${ctx.location.origin}/ort/`
+  : new URL("../ort/", ctx.location.href).href;
 
 const CHUNK_LENGTH_S = 30;
 const STRIDE_LENGTH_S = 5;

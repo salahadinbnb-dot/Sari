@@ -41,9 +41,7 @@ jobs:
           npm test
 
       - name: Build
-        env:
-          # Project sites live under https://<owner>.github.io/<repo>/
-          VITE_BASE_PATH: /${{ github.event.repository.name }}/
+        # Relative asset URLs (vite.config.ts): the build works under any repo name or domain.
         run: npm run build
 
       # GitHub Pages publishes the gh-pages branch. The build output replaces the

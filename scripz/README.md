@@ -11,6 +11,7 @@ The site is published from the `gh-pages` branch of this repository (GitHub Page
 - URL: `https://salahadinbnb-dot.github.io/Sari/`
 - Workflow: `.github/workflows/deploy-scripz.yml` runs on every push to `claude/scripz-domain-migration-nkjgg5` that touches `scripz/`. It typechecks, tests, builds, and force-pushes `dist/` to `gh-pages`; GitHub then redeploys the site within a minute or two.
 - The `gh-pages` branch holds only build output. Never commit to it by hand.
+- The build uses relative asset URLs, so renaming the repository (Settings → General → Repository name, e.g. `scripz`) moves the site to `https://salahadinbnb-dot.github.io/scripz/` immediately, with no rebuild. Renaming and creating repositories are the two GitHub actions that cannot be done from a Claude session.
 
 ### Custom domain
 

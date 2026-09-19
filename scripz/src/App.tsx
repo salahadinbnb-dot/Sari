@@ -8,8 +8,9 @@ import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
-// Vite's BASE_URL is "/" locally and "/<repo>/" on GitHub Pages.
-const routerBasename = import.meta.env.BASE_URL.replace(/\/$/, "");
+// The app is a single page served from whatever directory it was built into (/, /Sari/, /scripz/…),
+// so the router's base is the directory of the page that loaded it.
+const routerBasename = window.location.pathname.replace(/\/[^/]*$/, "");
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
