@@ -1,0 +1,13 @@
+project_id = "lqxaxkeknjxmkbhxktyh"
+
+[functions.fetch-instagram]
+verify_jwt = false
+
+[functions.transcribe-audio]
+verify_jwt = false
+
+[functions.fetch-facebook]
+verify_jwt = false
+
+[functions.telegram-webhook]
+verify_jwt = false
