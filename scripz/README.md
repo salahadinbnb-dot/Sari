@@ -6,12 +6,11 @@ Transcription runs **in the visitor's browser** (Whisper via [transformers.js](h
 
 ## Live site
 
-The site is published from this repository with GitHub Actions to GitHub Pages:
+The site is published from the `gh-pages` branch of this repository (GitHub Pages, "Deploy from a branch"):
 
-- Workflow: `.github/workflows/deploy-scripz.yml` (runs on every push to `claude/scripz-domain-migration-nkjgg5` that touches `scripz/`)
 - URL: `https://salahadinbnb-dot.github.io/Sari/`
-
-**One-time setup (repo owner):** GitHub → repository **Settings → Pages → Build and deployment → Source: “GitHub Actions”**. After that, re-run the latest "Deploy Scripz to GitHub Pages" workflow (or push again) and the site goes live.
+- Workflow: `.github/workflows/deploy-scripz.yml` runs on every push to `claude/scripz-domain-migration-nkjgg5` that touches `scripz/`. It typechecks, tests, builds, and force-pushes `dist/` to `gh-pages`; GitHub then redeploys the site within a minute or two.
+- The `gh-pages` branch holds only build output. Never commit to it by hand.
 
 ### Custom domain
 

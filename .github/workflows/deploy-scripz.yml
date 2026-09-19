@@ -10,17 +10,15 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
-  pages: write
-  id-token: write
+  contents: write
 
 concurrency:
   group: scripz-pages
   cancel-in-progress: true
 
 jobs:
-  build:
-    name: Build
+  build-and-publish:
+    name: Build and publish to gh-pages
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -48,18 +46,16 @@ jobs:
           VITE_BASE_PATH: /${{ github.event.repository.name }}/
         run: npm run build
 
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: scripz/dist
-
-  deploy:
-    name: Deploy
-    needs: build
-    runs-on: ubuntu-latest
-    # A dedicated environment: the auto-created "github-pages" one only allows the default branch.
-    environment:
-      name: scripz-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - id: deployment
-        uses: actions/deploy-pages@v4
+      # GitHub Pages publishes the gh-pages branch. The build output replaces the
+      # branch content on every deploy (the branch holds no source, only the site).
+      - name: Publish dist/ to the gh-pages branch
+        run: |
+          cd dist
+          git init -b gh-pages
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -q -m "Deploy Scripz ${GITHUB_SHA} (${GITHUB_REF_NAME})"
+          git push --force "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" gh-pages
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
