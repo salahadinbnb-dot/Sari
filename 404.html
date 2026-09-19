@@ -1,0 +1,8 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Scripz</title>
+<script>
+  // GitHub Pages serves this for unknown paths. Send the visitor to the app root (the repo path on
+  // *.github.io, otherwise the domain root); the app itself uses relative asset URLs.
+  var seg = location.pathname.split("/")[1];
+  var root = /\.github\.io$/.test(location.hostname) && seg ? "/" + seg + "/" : "/";
+  location.replace(root + location.search + location.hash);
+</script></head><body></body></html>
