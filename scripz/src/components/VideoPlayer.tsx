@@ -171,6 +171,9 @@ export function VideoPlayer({ videoUrl, thumbnailUrl, transcript, timestampedTra
             className="w-full h-full"
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
             allowFullScreen
+            // The page sends no referrer (X's video CDN rejects foreign referrers), but YouTube's
+            // player refuses to load without one ("Error 153"), so the embed sends its origin.
+            referrerPolicy="strict-origin-when-cross-origin"
             title="YouTube video player"
           />
         ) : (
