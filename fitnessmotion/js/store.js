@@ -1,6 +1,7 @@
 // Exercise catalogue, settings, workout generation, sessions and persistence (localStorage).
 // Port of Models/Exercise.swift + Models/Store.swift.
 import { PACKS } from './extra/index.js?v=7';
+import { buildPlan, nextDay } from './plan.js?v=7';
 
 export const GROUPS = ['Back', 'Biceps', 'Chest', 'Triceps', 'Shoulders', 'Abs', 'Legs', 'Glutes', 'Calves', 'Forearms'];
 export const GROUP_MUSCLES = {
@@ -168,7 +169,7 @@ function defaultSettings() {
 export class Store {
   constructor() {
     this.listeners = new Set();
-    this.workout = []; this.settings = defaultSettings(); this.history = []; this.saved = []; this.profile = { name: 'Salah Bro' }; this.session = null;
+    this.workout = []; this.settings = defaultSettings(); this.history = []; this.saved = []; this.profile = { name: 'Salah Bro' }; this.session = null; this.plan = null;
     this.load();
     if (!this.workout.length) this.workout = REFERENCE_WORKOUT.map(id => this.make(BY_ID[id]));
   }
@@ -177,12 +178,12 @@ export class Store {
   load() {
     try {
       const s = JSON.parse(localStorage.getItem(KEY) || 'null'); if (!s) return;
-      Object.assign(this, { workout: s.workout || [], history: s.history || [], saved: s.saved || [], profile: s.profile || this.profile, session: s.session || null });
+      Object.assign(this, { workout: s.workout || [], history: s.history || [], saved: s.saved || [], profile: s.profile || this.profile, session: s.session || null, plan: s.plan || null });
       this.settings = Object.assign(defaultSettings(), s.settings || {});
     } catch (e) { console.warn('state load failed', e); }
   }
   save() {
-    try { localStorage.setItem(KEY, JSON.stringify({ workout: this.workout, settings: this.settings, history: this.history, saved: this.saved, profile: this.profile, session: this.session })); }
+    try { localStorage.setItem(KEY, JSON.stringify({ workout: this.workout, settings: this.settings, history: this.history, saved: this.saved, profile: this.profile, session: this.session, plan: this.plan })); }
     catch (e) { console.warn('state save failed', e); }
   }
 
@@ -307,11 +308,35 @@ export class Store {
   }
   sessionAdd(ids) { this.addExercises(ids); if (!this.session) return; for (const w of this.workout) if (!this.session.exercises.some(x => x.exerciseId === w.exerciseId)) this.session.exercises.push({ ...w }); this.emit(); }
   sessionRemove(ids) { this.removeExercises(ids); if (this.session) { this.session.exercises = this.session.exercises.filter(x => !ids.includes(x.exerciseId)); this.emit(); } }
+  // ---- training plan
+  createPlan(opts) { this.plan = buildPlan({ ...opts, seed: Date.now() % 1e9 }, CATALOG); this.emit(); return this.plan; }
+  endPlan() { this.plan = null; this.emit(); }
+  get nextPlanDay() { return this.plan ? nextDay(this.plan) : null; }
+  planDay(ref) { return this.plan && ref ? this.plan.weeks[ref.week].days[ref.day] : null; }
+  /** Load a plan day as the current workout and start the session. */
+  startPlanDay(ref) {
+    const day = this.planDay(ref); if (!day) return;
+    this.workout = day.items.filter(it => BY_ID[it.exerciseId]).map(it => {
+      const w = this.make(BY_ID[it.exerciseId]); w.sets = it.sets; w.reps = it.reps; w.timed = it.timed;
+      const last = this.lastPerformance(it.exerciseId);
+      w.weight = it.weight == null ? null : Math.max(it.weight, last && last.weight != null && ref.week > 0 ? last.weight : 0);
+      return w;
+    });
+    this.session = null; this.startSession();
+    this.session.planRef = { ...ref }; this.session.title = `Week ${ref.week + 1} · ${day.name}`;
+    this.emit();
+  }
   finishSession() {
     const s = this.session; if (!s) return;
     s.endedAt = Date.now();
     if (this.totalSets(s) > 0) this.history.unshift(s);
     this.session = null;
+    const day = this.planDay(s.planRef);
+    if (day && this.totalSets(s) > 0) {
+      day.done = true; day.sessionId = s.id;
+      const nx = nextDay(this.plan); if (nx) this.plan.current = nx;
+      this.emit(); return;
+    }
     const n = Math.max(this.settings.routineDays.length, 1); this.settings.currentDay = (this.settings.currentDay + 1) % n;
     this.generateWorkout();
   }

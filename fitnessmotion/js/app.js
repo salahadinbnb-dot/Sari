@@ -1,6 +1,7 @@
 // FitnessMotion web app: screens and interactions (three tabs: Profile · Workouts · Planning).
 import { Store, CATALOG, BY_ID, GROUPS, GROUP_MUSCLES, ROUTINES, OBJECTIVES, REP_RANGES, EXPERIENCE, EQUIPMENT, NEW_IDS, PACK_CUES, summary, isDone, restLabel } from './store.js?v=7';
 import { CUES } from './cues.js?v=7';
+import { GOALS, LEVELS, PLACES, WEEKS, DAY_GROUPS, dayMinutes, planProgress } from './plan.js?v=7';
 import { loadAssets, LiveView, ThumbnailRenderer } from './scene.js?v=7';
 import { anatomySpec } from './library.js?v=7';
 
@@ -69,6 +70,7 @@ function renderHome() {
   const wrap = h('<div style="position:relative;flex:1;min-height:0;display:flex;flex-direction:column"></div>');
   const sc = h('<div class="scroll"></div>'); wrap.appendChild(sc); page.appendChild(wrap);
   page.classList.remove('scroll'); page.style.overflow = 'hidden';
+  if (store.plan) sc.appendChild(planBanner());
   const hero = h('<div class="hero"><img alt="Front view, target muscles in blue"><img alt="Back view, target muscles in blue"></div>');
   const hl = store.todayHighlight;
   thumbs.anatomy(anatomySpec(hl, false), 170, 340).then(u => hero.children[0].src = u);
@@ -351,7 +353,7 @@ function openAddExercise(inSession, onDone, { focusSearch = false } = {}) {
   };
   const drawChips = () => {
     chips.innerHTML = '';
-    for (const g of [null, ...GROUPS]) { const c = h(`<button class="chip ${group === g ? 'on' : ''}">${g || 'All'}</button>`); c.onclick = () => { group = g; drawChips(); drawList(); }; chips.appendChild(c); }
+    for (const g of [null, ...GROUPS, 'Cardio']) { const c = h(`<button class="chip ${group === g ? 'on' : ''}">${g || 'All'}</button>`); c.onclick = () => { group = g; drawChips(); drawList(); }; chips.appendChild(c); }
   };
   const drawList = () => {
     list.innerHTML = '';
@@ -359,8 +361,9 @@ function openAddExercise(inSession, onDone, { focusSearch = false } = {}) {
     if (!rows.length) list.appendChild(h(`<div class="empty">🔍<b>No exercises match "${esc(q)}"</b>Try a muscle group like "chest" or part of a name.</div>`));
     for (const d of rows) {
       const on = sel.has(d.id);
-      const r = h(`<button class="add-row ${on ? 'on' : ''}"><span class="thumb"></span><span class="name">${esc(d.name)}${NEW_IDS.has(d.id) ? '<i class="new">NEW</i>' : ''}<small>${d.groups.join(' · ')}</small></span><span class="check ${on ? 'on' : ''}">${on ? '✓' : ''}</span></button>`);
+      const r = h(`<button class="add-row ${on ? 'on' : ''}"><span class="thumb"></span><span class="name">${esc(d.name)}${NEW_IDS.has(d.id) ? '<i class="new">NEW</i>' : ''}<small>${d.groups.join(' · ')}</small></span><span class="info" role="button" aria-label="How to do ${esc(d.name)}">i</span><span class="check ${on ? 'on' : ''}">${on ? '✓' : ''}</span></button>`);
       thumbInto($('.thumb', r), d.id, 144);
+      $('.info', r).onclick = ev => { ev.stopPropagation(); openExerciseInfo(d.id); };
       r.onclick = () => { on ? sel.delete(d.id) : sel.add(d.id); drawList(); updateBtn(); };
       list.appendChild(r);
     }
@@ -374,6 +377,132 @@ function openAddExercise(inSession, onDone, { focusSearch = false } = {}) {
   $('.back', m).onclick = close;
   btn.onclick = () => { if (inSession) { store.sessionAdd(additions()); store.sessionRemove(removals()); } else { store.addExercises(additions()); store.removeExercises(removals()); } close(); };
 }
+
+// ---------- training plan
+function planHeadline(plan) {
+  const g = GOALS[plan.options.goal]; const { done, total } = planProgress(plan);
+  return { g, done, total, pct: Math.round(done / Math.max(total, 1) * 100) };
+}
+function planCard() {
+  const plan = store.plan;
+  if (!plan) {
+    const c = h(`<div class="plan-hero"><div class="kicker">NEW · 6-WEEK PLANS</div><h2>Train with a plan, not guesswork</h2>
+      <ul><li>Built for your goal, schedule and equipment</li><li>Weight, sets and reps progress every week</li><li>Built-in deload so you keep getting stronger</li></ul>
+      <button class="primary">Build My Plan</button></div>`);
+    $('.primary', c).onclick = () => openPlanBuilder(); return c;
+  }
+  const { g, done, total, pct } = planHeadline(plan); const nx = store.nextPlanDay;
+  const c = h(`<div class="plan-hero on"><div class="kicker">${g.icon} ${esc(g.name.toUpperCase())} · ${plan.options.days} DAYS / WEEK</div>
+    <h2>${nx ? `Week ${nx.week + 1}: ${esc(plan.weeks[nx.week].name)}` : 'Plan complete 🎉'}</h2>
+    <div class="pbar"><i style="width:${pct}%"></i></div><div class="pmeta">${done} of ${total} workouts · ${pct}%</div>
+    ${nx ? `<div class="next"><span>Next up</span><b>${esc(plan.weeks[nx.week].days[nx.day].name)}</b><small>${plan.weeks[nx.week].days[nx.day].items.length} exercises · ~${dayMinutes(plan.weeks[nx.week].days[nx.day], plan.rest)} min</small></div>` : ''}
+    <div class="row2" style="padding:0;margin-top:14px"><button class="pillbtn view">View Plan</button>${nx ? '<button class="primary start" style="margin:0">▶ Start</button>' : '<button class="primary rebuild" style="margin:0">New Plan</button>'}</div></div>`);
+  $('.view', c).onclick = () => openPlan();
+  if (nx) $('.start', c).onclick = () => startPlanDay(nx); else $('.rebuild', c).onclick = () => openPlanBuilder();
+  return c;
+}
+function planBanner() {
+  const plan = store.plan, nx = store.nextPlanDay;
+  const b = h(`<button class="plan-banner"><span class="pb-ic">📅</span><span class="pb-t"><small>YOUR PLAN · ${planHeadline(plan).pct}% DONE</small><b>${nx ? `Week ${nx.week + 1} · ${esc(plan.weeks[nx.week].days[nx.day].name)}` : 'Plan complete — build the next one'}</b></span><span class="pb-go">${nx ? 'Start ›' : '›'}</span></button>`);
+  b.onclick = () => nx ? startPlanDay(nx) : openPlanBuilder();
+  return b;
+}
+function startPlanDay(ref) {
+  const go = () => { store.startPlanDay(ref); render(); openSession(); };
+  if (store.session && store.totalSets(store.session) > 0) {
+    actionSheet({ icon: '⚠️', title: 'Replace workout in progress?', subtitle: 'Your current session has logged sets. Starting this plan day will finish it first.', action: 'Finish & Start', perform: () => { store.finishSession(); go(); } });
+  } else go();
+}
+function openPlanBuilder() {
+  const sel = { goal: store.plan?.options.goal || 'muscle', days: store.plan?.options.days || 4, level: store.settings.experience || 'Intermediate', place: store.plan?.options.place || 'gym' };
+  const m = h('<div class="modal" style="background:var(--bg)"><div class="topbar"><button class="back" aria-label="Back">←</button>Build Your Plan</div><div class="scroll pb-body"></div><div class="sticky"><button class="primary">Create 6-Week Plan</button></div></div>');
+  const body = $('.pb-body', m);
+  const draw = () => {
+    body.innerHTML = '';
+    body.appendChild(h('<div class="pb-step"><span>1</span>What\'s your goal?</div>'));
+    const goals = h('<div class="pb-grid"></div>');
+    for (const [id, g] of Object.entries(GOALS)) {
+      const b = h(`<button class="pb-opt ${sel.goal === id ? 'on' : ''}"><span class="ic">${g.icon}</span><b>${g.name}</b><small>${g.blurb}</small></button>`);
+      b.onclick = () => { sel.goal = id; draw(); }; goals.appendChild(b);
+    }
+    body.appendChild(goals);
+    body.appendChild(h('<div class="pb-step"><span>2</span>Days per week</div>'));
+    const days = h('<div class="pb-days"></div>');
+    for (const n of [2, 3, 4, 5, 6]) { const b = h(`<button class="${sel.days === n ? 'on' : ''}">${n}</button>`); b.onclick = () => { sel.days = n; draw(); }; days.appendChild(b); }
+    body.appendChild(days);
+    body.appendChild(h(`<div class="pb-hint">${splitLabel(sel)}</div>`));
+    body.appendChild(h('<div class="pb-step"><span>3</span>Experience</div>'));
+    body.appendChild(segmented(Object.keys(LEVELS).map(k => [k, k]), sel.level, v => { sel.level = v; draw(); }));
+    body.appendChild(h('<div class="pb-step"><span>4</span>Where do you train?</div>'));
+    const places = h('<div class="pb-grid three"></div>');
+    for (const [id, pl] of Object.entries(PLACES)) { const b = h(`<button class="pb-opt ${sel.place === id ? 'on' : ''}"><span class="ic">${pl.icon}</span><b>${pl.name}</b></button>`); b.onclick = () => { sel.place = id; draw(); }; places.appendChild(b); }
+    body.appendChild(places);
+    body.appendChild(h('<div style="height:110px"></div>'));
+  };
+  draw(); app.appendChild(m);
+  $('.back', m).onclick = () => m.remove();
+  $('.primary', m).onclick = () => {
+    const make = () => { store.createPlan(sel); m.remove(); render(); openPlan(); toast('Your 6-week plan is ready'); };
+    if (store.plan && planProgress(store.plan).done > 0) actionSheet({ icon: '📅', title: 'Replace your current plan?', subtitle: 'Your logged workouts stay in History, but plan progress starts over.', action: 'Replace Plan', perform: make });
+    else make();
+  };
+}
+function splitLabel(sel) {
+  const names = { 2: 'Full Body ×2', 3: sel.goal === 'fatloss' ? 'Full Body ×3' : 'Push · Pull · Legs', 4: 'Upper · Lower ×2', 5: 'Push · Pull · Legs · Upper · Lower', 6: 'Push · Pull · Legs ×2' };
+  return `Split: <b>${names[sel.days]}</b>`;
+}
+function openPlan(focusWeek) {
+  const plan = store.plan; if (!plan) return;
+  let week = focusWeek ?? (store.nextPlanDay?.week ?? 0);
+  const m = h('<div class="modal" style="background:var(--bg)"><div class="topbar"><button class="back" aria-label="Back">←</button>My Plan<button class="more pmore" aria-label="Plan options">···</button></div><div class="weeks"></div><div class="scroll plan-body"></div></div>');
+  const weeksEl = $('.weeks', m), body = $('.plan-body', m);
+  const draw = () => {
+    weeksEl.innerHTML = '';
+    plan.weeks.forEach((w, wi) => {
+      const done = w.days.every(d => d.done);
+      const b = h(`<button class="wk ${wi === week ? 'on' : ''} ${done ? 'done' : ''}"><small>WEEK</small><b>${done ? '✓' : wi + 1}</b></button>`);
+      b.onclick = () => { week = wi; draw(); }; weeksEl.appendChild(b);
+    });
+    const w = plan.weeks[week]; const nx = store.nextPlanDay;
+    body.innerHTML = '';
+    body.appendChild(h(`<div class="wk-head"><h2>Week ${week + 1} · ${esc(w.name)}</h2><p>${esc(w.note)}</p></div>`));
+    w.days.forEach((d, di) => {
+      const isNext = nx && nx.week === week && nx.day === di;
+      const card = h(`<div class="pday ${d.done ? 'done' : ''} ${isNext ? 'next' : ''}"><div class="pday-h"><div><small>DAY ${di + 1}${isNext ? ' · UP NEXT' : ''}${d.done ? ' · DONE' : ''}</small><h3>${esc(d.name)}</h3><div class="flow">${DAY_GROUPS(d.type).filter((g, i, a) => a.indexOf(g) === i).map(g => `<span class="chipx dim">${g}</span>`).join('')}</div></div><span class="mins">~${dayMinutes(d, plan.rest)}<small>min</small></span></div><div class="pday-list"></div><button class="${isNext ? 'primary' : 'pillbtn'} go">${d.done ? '↻ Do Again' : '▶ Start ' + esc(d.name)}</button></div>`);
+      const list = $('.pday-list', card);
+      for (const it of d.items) {
+        const def = BY_ID[it.exerciseId]; if (!def) continue;
+        const r = h(`<button class="pex"><span class="thumb"></span><span class="t"><b>${esc(def.name)}</b><small>${it.sets} × ${it.reps} ${it.timed ? 'sec' : 'reps'}${it.weight != null ? ` · ${it.weight} lbs` : ''}</small></span><span class="info">i</span></button>`);
+        thumbInto($('.thumb', r), def.id, 128); r.onclick = () => openExerciseInfo(def.id); list.appendChild(r);
+      }
+      $('.go', card).onclick = () => { m.remove(); startPlanDay({ week, day: di }); };
+      body.appendChild(card);
+    });
+    body.appendChild(h('<div style="height:40px"></div>'));
+  };
+  draw(); app.appendChild(m);
+  $('.back', m).onclick = () => { m.remove(); render(); };
+  $('.more', m).onclick = ev => showMenu(ev.currentTarget, [
+    ['Rebuild plan', () => { m.remove(); openPlanBuilder(); }],
+    ['End plan', () => actionSheet({ icon: '📅', title: 'End this plan?', subtitle: 'Your workout history is kept.', action: 'End Plan', perform: () => { store.endPlan(); m.remove(); render(); } }), 'red'],
+  ]);
+}
+/** Exercise library card: live 3D demo, muscles, equipment and coaching cues. */
+async function openExerciseInfo(id) {
+  const def = BY_ID[id]; if (!def) return;
+  const cue = CUES[id] || PACK_CUES[id];
+  const m = h(`<div class="modal info-modal" style="background:var(--bg)"><div class="demo"><div class="btns"><button class="round" aria-label="Close">✕</button></div></div>
+    <div class="scroll info-body"><h1>${esc(def.name)}</h1><div class="flow">${def.groups.map(g => `<span class="chipx on">${g}</span>`).join('')}<span class="chipx dim">${esc(EQUIP_LABEL[def.equipment] || def.equipment)}</span></div>
+    ${cue ? `<h2>How To Do It</h2><ol class="howto">${cue.steps.map(x => `<li>${esc(x)}</li>`).join('')}</ol><div class="changed tip"><span class="s">!</span><span>${esc(cue.tip)}</span></div>` : ''}
+    <div style="height:30px"></div></div></div>`);
+  app.appendChild(m);
+  $('.round', m).onclick = () => { parkLive(live); m.remove(); };
+  const live = await acquireLive('preview');
+  mountLive(live, $('.demo', m)); live.exerciseId = null; live.show(id);
+}
+const EQUIP_LABEL = { bodyweight: 'Bodyweight', dumbbells: 'Dumbbells', barbell: 'Barbell', kettlebell: 'Kettlebell', cable: 'Cable', machine: 'Machine', band: 'Band',
+  bench: 'Bench', dumbbellBench: 'Dumbbells + Bench', barbellBench: 'Barbell + Bench', pullUpBar: 'Pull Up Bar', dipBars: 'Dip Bars', stabilityBall: 'Stability Ball',
+  abWheel: 'Ab Wheel', ropes: 'Battle Ropes', box: 'Plyo Box', medicineBall: 'Medicine Ball', parallelBars: 'Parallel Bars' };
 
 // ---------- session
 async function openSession({ selectId } = {}) {
@@ -407,6 +536,8 @@ async function openSession({ selectId } = {}) {
     else if (last && last.weight != null && cur.weight != null && cur.weight > last.weight) changed = `You handled ${last.weight} lbs last time, so we bumped you up to ${cur.weight} lbs.`;
     else if (last && last.weight != null) changed = `You've done this ${times} time${times === 1 ? '' : 's'}. Last time you logged ${last.weight} lbs × ${last.reps} reps.`;
     else changed = `You've done this ${times} time${times === 1 ? '' : 's'} before. Keep the form tight.`;
+    const pr = store.session && store.session.planRef;
+    if (pr && store.plan) c.appendChild(h(`<div class="plan-tag">📅 ${esc(store.session.title)} · ${esc(store.plan.weeks[pr.week].name)}</div>`));
     c.appendChild(h(`<div class="learning">📊 ${times === 0 ? 'Learning' : 'Progressing'}</div>`));
     c.appendChild(h(`<h1>${esc(cur.name)}</h1>`));
     c.appendChild(h(`<div class="sum">${summary(cur)}</div>`));
@@ -451,7 +582,7 @@ async function openSession({ selectId } = {}) {
     if (isDone(cur)) { advance(cur); return; }
     const finished = store.logSet(cur); navigator.vibrate && navigator.vibrate(20);
     if (exercises().every(isDone)) { showComplete(); return; }
-    if (store.settings.restEnabled) startRest(finished ? store.settings.restMax : store.settings.restMin);
+    if (store.settings.restEnabled) startRest(store.session.planRef && store.plan ? store.plan.rest : (finished ? store.settings.restMax : store.settings.restMin));
     drawStrip(); drawCard();
     if (finished || store.settings.circuit) setTimeout(() => advance(cur), 700);
   };
@@ -483,7 +614,8 @@ function beep() {
 // ---------- planning
 function renderPlanning() {
   page.appendChild(header({ gear: false }));
-  page.appendChild(h('<div class="section plain" style="margin-top:10px">Routine</div>'));
+  page.appendChild(planCard());
+  page.appendChild(h(`<div class="section plain" style="margin-top:26px">${store.plan ? 'Free Training Routine' : 'Routine'}</div>`));
   const days = store.settings.routineDays;
   days.forEach((day, index) => {
     const active = index === store.settings.currentDay;
