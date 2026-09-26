@@ -1,5 +1,6 @@
 // Exercise catalogue, settings, workout generation, sessions and persistence (localStorage).
 // Port of Models/Exercise.swift + Models/Store.swift.
+import { PACKS } from './extra/index.js?v=7';
 
 export const GROUPS = ['Back', 'Biceps', 'Chest', 'Triceps', 'Shoulders', 'Abs', 'Legs', 'Glutes', 'Calves', 'Forearms'];
 export const GROUP_MUSCLES = {
@@ -105,6 +106,8 @@ export const CATALOG = [
   e('russian-twist', 'Russian Twist', ['Abs'], 'bodyweight', null, 20),
   e('high-knees', 'High Knees', ['Legs', 'Cardio'], 'bodyweight', null, 30, 3, true),
 ];
+for (const pack of PACKS) for (const d of pack.data) CATALOG.push(e(d.id, d.name, d.groups, d.equipment, d.weight ?? null, d.reps ?? 10, d.sets ?? 4, !!d.timed));
+export const PACK_CUES = Object.fromEntries(PACKS.flatMap(pack => pack.data.map(d => [d.id, { steps: d.steps, tip: d.tip }])));
 export const NEW_IDS = new Set(CATALOG.slice(CATALOG.findIndex(d => d.id === 'push-up')).map(d => d.id));
 CATALOG.sort((a, b) => a.name.localeCompare(b.name));
 export const BY_ID = Object.fromEntries(CATALOG.map(d => [d.id, d]));
@@ -135,7 +138,7 @@ export const EQUIPMENT = [
   { id: 'cables', name: 'Cable Machines', icon: '🔌', items: ['Cable Crossover', 'Lat Pulldown', 'Seated Row', 'Single Cable Station'] },
   { id: 'attachments', name: 'Cable Attachments', icon: '🔗', items: ['Straight Bar', 'Rope', 'V-Bar', 'Single Handle', 'Wide Bar'] },
   { id: 'machines', name: 'Weight Machines', icon: '⚙️', items: ['Chest Press Machine', 'Fly Machine', 'Leg Press', 'Leg Curl', 'Leg Extension', 'Assisted Pull Up / Dip', 'Back Extension Machine', 'Crunch Machine', 'Stepmill'] },
-  { id: 'other', name: 'Other', icon: '📦', items: ['Stability Ball', 'Ab Wheel', 'Battle Ropes', 'Medicine Ball'] },
+  { id: 'other', name: 'Other', icon: '📦', items: ['Stability Ball', 'Ab Wheel', 'Battle Ropes', 'Medicine Ball', 'Plyo Box'] },
 ];
 const DEFAULT_EQUIPMENT = {
   bodyweight: ['Bodyweight Only'], household: ['Large Textbook'], freeweights: ['Dumbbells'], benches: ['Incline (Adjustable) Bench'],
@@ -199,6 +202,8 @@ export class Store {
       case 'dumbbellBench': return has('freeweights', 'Dumbbells') && any('benches');
       case 'barbellBench': return has('freeweights', 'Barbell') && any('benches');
       case 'pullUpBar': return has('bars', 'Pull Up Bar');
+      case 'box': return has('other', 'Plyo Box') || any('benches');
+      case 'medicineBall': return has('other', 'Medicine Ball');
       case 'dipBars': return has('bars', 'Dip Bars') || has('bars', 'Parallel Bars');
       default: return true;
     }

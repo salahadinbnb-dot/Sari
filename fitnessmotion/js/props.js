@@ -47,13 +47,13 @@ export const Geo = {
   },
 };
 
-class PropNode {
+export class PropNode {
   constructor() { this.node = new THREE.Group(); this.attached = []; }
   update(ctx) {}
   remove() { this.node.removeFromParent(); for (const a of this.attached) a.removeFromParent(); }
 }
 
-class HeldProp extends PropNode {
+export class HeldProp extends PropNode {
   constructor(build, sides) { super(); this.build = build; this.sides = sides; this.built = false; }
   update(ctx) {
     if (this.built) return; this.built = true;
@@ -61,7 +61,7 @@ class HeldProp extends PropNode {
   }
 }
 
-class TwoHandedProp extends PropNode {
+export class TwoHandedProp extends PropNode {
   update(ctx) {
     const l = ctx.grip('L'), r = ctx.grip('R');
     this.node.position.copy(l).add(r).multiplyScalar(0.5);
@@ -73,7 +73,7 @@ class TwoHandedProp extends PropNode {
   }
 }
 
-function barbellNode(width) {
+export function barbellNode(width) {
   const n = new THREE.Group();
   n.add(Geo.cylinder(0.015, width, Materials.metalFrame, V(0, 0, 0), qz90));
   for (const s of [-1, 1]) {
@@ -83,7 +83,7 @@ function barbellNode(width) {
   return n;
 }
 
-const Furniture = {
+export const Furniture = {
   bench(backAngle) {
     const n = new THREE.Group(); const pad = Materials.padding, frame = Materials.metalFrame;
     n.add(Geo.box(0.34, 0.07, 0.42, pad, V(0, 0.415, 0.06)));
@@ -234,9 +234,9 @@ const Furniture = {
   },
 };
 
-class StaticProp extends PropNode { constructor(n) { super(); this.node.add(n); } }
+export class StaticProp extends PropNode { constructor(n) { super(); this.node.add(n); } }
 
-class CableProp extends PropNode {
+export class CableProp extends PropNode {
   constructor(anchor, attachment, furniture, side) {
     super();
     this.anchor = anchor; this.attachment = attachment; this.side = side;
@@ -329,6 +329,9 @@ class BattleRopesProp extends PropNode {
   }
 }
 
+/** Props registered by exercise packs (js/extra/*.js): kind → (descriptor) => PropNode. */
+export const EXTRA_PROPS = {};
+
 export function makeProp(d) {
   switch (d.kind) {
     case 'dumbbells': return new HeldProp(() => Geo.dumbbell(), d.sides);
@@ -362,6 +365,6 @@ export function makeProp(d) {
     case 'squatRack': return new StaticProp(Furniture.squatRack());
     case 'flatBench': return new StaticProp(Furniture.flatBench(d.incline || 0));
     case 'pullUpBar': return new StaticProp(Furniture.pullUpBar());
-    default: return new PropNode();
+    default: return EXTRA_PROPS[d.kind] ? EXTRA_PROPS[d.kind](d) : new PropNode();
   }
 }

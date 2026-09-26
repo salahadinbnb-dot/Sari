@@ -1,6 +1,7 @@
 // One looping motion clip (+ camera, props, muscle highlight) per exercise.
 // Port of FitnessMotion/Motion/MotionLibrary.swift.
-import { Pose, MotionClip, Side, Vec as V, euler, qx, qy, deg, Skeleton } from './skeleton.js?v=7';
+import { Pose, MotionClip, Side, Vec as V, euler, qx, qy, qz, deg, Skeleton } from './skeleton.js?v=7';
+import { PACKS } from './extra/index.js?v=7';
 
 export const cam = (azimuth, elevation = 8, distance = 4.2, targetHeight = 0.95, fov = 30, lateralOffset = 0) =>
   ({ azimuth, elevation, distance, targetHeight, fov, lateralOffset });
@@ -829,6 +830,11 @@ B['high-knees'] = () => {
   };
   return spec(clip(0.8, [[0, run(Side.L)], [0.5, run(Side.R)], [1, run(Side.L)]]), cam(50, 6, 4.4, 1.0), [], ['quads', 'abs', 'calves']);
 };
+
+// ---- Exercise packs (js/extra/*.js) build on the same helpers
+const HELPERS = { Pose, Side, V, euler, qx, qy, qz, deg, Skeleton, cam, clip, rep, alternating, spec, P,
+  lungePose, proneLine, plantHands, benchLie, overChest, hinge, qIdentityFor, lieBack };
+for (const pack of PACKS) Object.assign(B, pack.motions(HELPERS));
 
 const cache = new Map();
 export function motionSpec(id) {

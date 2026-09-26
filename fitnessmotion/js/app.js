@@ -1,5 +1,5 @@
 // FitnessMotion web app: screens and interactions (three tabs: Profile · Workouts · Planning).
-import { Store, CATALOG, BY_ID, GROUPS, GROUP_MUSCLES, ROUTINES, OBJECTIVES, REP_RANGES, EXPERIENCE, EQUIPMENT, NEW_IDS, summary, isDone, restLabel } from './store.js?v=7';
+import { Store, CATALOG, BY_ID, GROUPS, GROUP_MUSCLES, ROUTINES, OBJECTIVES, REP_RANGES, EXPERIENCE, EQUIPMENT, NEW_IDS, PACK_CUES, summary, isDone, restLabel } from './store.js?v=7';
 import { CUES } from './cues.js?v=7';
 import { loadAssets, LiveView, ThumbnailRenderer } from './scene.js?v=7';
 import { anatomySpec } from './library.js?v=7';
@@ -423,7 +423,7 @@ async function openSession({ selectId } = {}) {
       const r = h(`<div class="rest"><div class="r1">⏱ Rest<span class="time">${timeStr(restRemaining)}</span><button class="skip">Skip</button></div><div class="bar"><i style="width:${(restTotal - restRemaining) / Math.max(restTotal, 1) * 100}%"></i></div></div>`);
       $('.skip', r).onclick = () => endRest(); c.appendChild(r);
     }
-    const cue = CUES[cur.exerciseId];
+    const cue = CUES[cur.exerciseId] || PACK_CUES[cur.exerciseId];
     if (cue) {
       c.appendChild(h('<h2>How To Do It</h2>'));
       c.appendChild(h(`<ol class="howto">${cue.steps.map(x => `<li>${esc(x)}</li>`).join('')}</ol>`));
