@@ -75,7 +75,38 @@ export const CATALOG = [
   e('wipers', 'Wipers', ['Abs'], 'bodyweight', null, 16),
   e('zottman-curl', 'Zottman Curl', ['Biceps', 'Forearms'], 'dumbbells', 15, 10),
   e('zottman-preacher-curl', 'Zottman Preacher Curl', ['Biceps', 'Forearms'], 'dumbbells', 15, 10),
+  // added exercises (flagged NEW in the picker)
+  e('push-up', 'Push Up', ['Chest', 'Triceps'], 'bodyweight', null, 12),
+  e('knee-push-up', 'Knee Push Up', ['Chest', 'Triceps'], 'bodyweight', null, 12),
+  e('dumbbell-bench-press', 'Dumbbell Bench Press', ['Chest', 'Triceps'], 'dumbbellBench', 40, 10),
+  e('incline-dumbbell-press', 'Incline Dumbbell Press', ['Chest', 'Shoulders'], 'dumbbellBench', 35, 10),
+  e('dumbbell-fly', 'Dumbbell Fly', ['Chest'], 'dumbbellBench', 20, 12),
+  e('barbell-bench-press', 'Barbell Bench Press', ['Chest', 'Triceps'], 'barbellBench', 115, 8),
+  e('chest-dip', 'Chest Dip', ['Chest', 'Triceps'], 'dipBars', null, 10),
+  e('bench-dip', 'Bench Dip', ['Triceps', 'Chest'], 'bench', null, 12),
+  e('dumbbell-kickback', 'Dumbbell Kickback', ['Triceps'], 'dumbbells', 15, 12),
+  e('cable-tricep-pushdown', 'Cable Tricep Pushdown', ['Triceps'], 'cable', 50, 12),
+  e('lying-dumbbell-tricep-extension', 'Lying Dumbbell Tricep Extension', ['Triceps'], 'dumbbellBench', 20, 12),
+  e('dumbbell-lateral-raise', 'Dumbbell Lateral Raise', ['Shoulders'], 'dumbbells', 15, 12),
+  e('dumbbell-front-raise', 'Dumbbell Front Raise', ['Shoulders'], 'dumbbells', 15, 12),
+  e('pull-up', 'Pull Up', ['Back', 'Biceps'], 'pullUpBar', null, 8),
+  e('barbell-deadlift', 'Barbell Deadlift', ['Back', 'Legs', 'Glutes'], 'barbell', 155, 6),
+  e('barbell-bent-over-row', 'Barbell Bent Over Row', ['Back', 'Biceps'], 'barbell', 95, 10),
+  e('bodyweight-squat', 'Bodyweight Squat', ['Legs', 'Glutes'], 'bodyweight', null, 15),
+  e('dumbbell-reverse-lunge', 'Dumbbell Reverse Lunge', ['Legs', 'Glutes'], 'dumbbells', 25, 12),
+  e('glute-bridge', 'Glute Bridge', ['Glutes', 'Legs'], 'bodyweight', null, 15),
+  e('barbell-hip-thrust', 'Barbell Hip Thrust', ['Glutes', 'Legs'], 'barbellBench', 135, 10),
+  e('standing-calf-raise', 'Standing Calf Raise', ['Calves'], 'dumbbells', 30, 15),
+  e('mountain-climber', 'Mountain Climber', ['Abs', 'Cardio'], 'bodyweight', null, 30, 4, true),
+  e('burpee', 'Burpee', ['Chest', 'Legs', 'Cardio'], 'bodyweight', null, 10),
+  e('jumping-jacks', 'Jumping Jacks', ['Calves', 'Cardio'], 'bodyweight', null, 45, 3, true),
+  e('crunch', 'Crunch', ['Abs'], 'bodyweight', null, 20),
+  e('dead-bug', 'Dead Bug', ['Abs'], 'bodyweight', null, 12),
+  e('russian-twist', 'Russian Twist', ['Abs'], 'bodyweight', null, 20),
+  e('high-knees', 'High Knees', ['Legs', 'Cardio'], 'bodyweight', null, 30, 3, true),
 ];
+export const NEW_IDS = new Set(CATALOG.slice(CATALOG.findIndex(d => d.id === 'push-up')).map(d => d.id));
+CATALOG.sort((a, b) => a.name.localeCompare(b.name));
 export const BY_ID = Object.fromEntries(CATALOG.map(d => [d.id, d]));
 export const REFERENCE_WORKOUT = ['lat-pulldown', 'dumbbell-high-shrug', 'cable-row', 'dumbbell-curl', 'hammer-curl', 'dumbbell-shoulder-press', 'arnold-press'];
 
@@ -164,7 +195,12 @@ export class Store {
       case 'kettlebell': return has('freeweights', 'Kettlebells'); case 'cable': return any('cables'); case 'machine': return any('machines');
       case 'band': return any('bands'); case 'bench': return any('benches'); case 'stabilityBall': return has('other', 'Stability Ball');
       case 'abWheel': return has('other', 'Ab Wheel'); case 'parallelBars': return has('bars', 'Parallel Bars') || has('bars', 'Dip Bars');
-      case 'ropes': return has('other', 'Battle Ropes'); default: return true;
+      case 'ropes': return has('other', 'Battle Ropes');
+      case 'dumbbellBench': return has('freeweights', 'Dumbbells') && any('benches');
+      case 'barbellBench': return has('freeweights', 'Barbell') && any('benches');
+      case 'pullUpBar': return has('bars', 'Pull Up Bar');
+      case 'dipBars': return has('bars', 'Dip Bars') || has('bars', 'Parallel Bars');
+      default: return true;
     }
   }
   applySettings(item) {

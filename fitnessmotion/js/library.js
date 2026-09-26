@@ -1,6 +1,6 @@
 // One looping motion clip (+ camera, props, muscle highlight) per exercise.
 // Port of FitnessMotion/Motion/MotionLibrary.swift.
-import { Pose, MotionClip, Side, Vec as V, euler, qx, qy, deg, Skeleton } from './skeleton.js?v=6';
+import { Pose, MotionClip, Side, Vec as V, euler, qx, qy, deg, Skeleton } from './skeleton.js?v=7';
 
 export const cam = (azimuth, elevation = 8, distance = 4.2, targetHeight = 0.95, fov = 30, lateralOffset = 0) =>
   ({ azimuth, elevation, distance, targetHeight, fov, lateralOffset });
@@ -34,6 +34,8 @@ const P = {
   ropes: anchor => ({ kind: 'battleRopes', anchor }),
   mat: () => ({ kind: 'mat' }),
   rack: () => ({ kind: 'squatRack' }),
+  flatBench: (incline = 0) => ({ kind: 'flatBench', incline }),
+  pullUpBar: () => ({ kind: 'pullUpBar' }),
 };
 
 const B = {}; // builders by id
@@ -541,6 +543,293 @@ B['battle-ropes'] = () => {
   return spec(clip(0.9, [[0, high], [0.5, low], [1, high]]), cam(35, 8, 4.6, 0.9), [P.ropes(V(0, 0.06, 2.6))], ['deltoids', 'forearms', 'abs']);
 };
 
+// ---- Chest & pressing
+/** Rigid straight body pivoting on the toes (or knees): `angle` is the body's tilt off the floor in degrees. */
+function proneLine(angle, { knees = false, pivotZ = -0.95 } = {}) {
+  const p = Pose.prone(); p.set('pelvis', qx(90 - angle));
+  const reach = knees ? 0.50 : 0.92, pivotY = knees ? 0.07 : 0.07;
+  p.pelvisOffset = V(0, pivotY + reach * Math.sin(deg(angle)) - Skeleton.pelvisHeight, pivotZ + reach * Math.cos(deg(angle)));
+  for (const s of Side.both) {
+    p.set(s.hip, qx(0));
+    if (knees) { p.set(s.knee, qx(95)); p.set(s.ankle, qx(0)); } else { p.set(s.knee, qx(0)); p.set(s.ankle, qx(-55)); }
+  }
+  return p;
+}
+/** Hands planted on the floor under the shoulders of `ref`, applied to `p` (arms bend via IK). */
+function plantHands(p, ref, width = 0.30, y = 0.03, pole = V(0.6, 0.6, -0.4)) {
+  const t = ref.worldTransforms(); const z = t.shoulderL.position.z;
+  p.reachBoth(V(width, y, z), pole, 'down');
+  return p;
+}
+function pushUp(knees) {
+  const top = proneLine(knees ? 30 : 24, { knees }), bottom = proneLine(knees ? 9 : 7, { knees });
+  plantHands(top, top); plantHands(bottom, top);
+  bottom.setHead({ pitch: -6 });
+  return spec(rep(2.4, top, bottom, 0.45, 0.06), cam(60, 12, 4.2, 0.4), [P.mat()], ['chest', 'triceps', 'deltoids', 'abs']);
+}
+B['push-up'] = () => pushUp(false);
+B['knee-push-up'] = () => pushUp(true);
+
+/** Lying on the long bench (hips at z≈0, head toward −Z), feet planted. `incline` tilts the back pad. */
+function benchLie(incline = 0) {
+  const p = Pose.supine(); p.set('pelvis', qx(-90 + incline));
+  p.pelvisOffset = V(0, 0.60 - Skeleton.pelvisHeight + incline * 0.004, 0.05);
+  for (const s of Side.both) p.reachLeg(s, V(s.sign * 0.30, Skeleton.ankleHeight, 0.52), V(s.sign * 0.4, 0.3, 1));
+  p.levelFeet();
+  return p;
+}
+/** Hand target straight "above" the chest along the lying body's own up axis. */
+function overChest(p, width, lift, along = 0) {
+  const t = p.worldTransforms(); const c = t.chest; const up = V(0, 0, 1).applyQuaternion(c.rotation); const head = V(0, 1, 0).applyQuaternion(c.rotation);
+  const base = c.position.clone().add(head.multiplyScalar(0.10 + along));
+  return x => base.clone().add(up.clone().multiplyScalar(lift)).add(V(x, 0, 0));
+}
+function lyingPress(incline, props, highlight, bar = false) {
+  const top = benchLie(incline), bottom = benchLie(incline);
+  const hi = overChest(top, 0, 0.58), lo = overChest(bottom, 0, 0.10);
+  const w = bar ? 0.36 : 0.20, wl = bar ? 0.38 : 0.34;
+  const up = V(0, 0, 1).applyQuaternion(top.worldTransforms().chest.rotation);
+  for (const s of Side.both) {
+    top.reachArm(s, hi(s.sign * w), V(s.sign, 0, 0).add(up.clone().multiplyScalar(-0.3)), bar ? 'forward' : 'forward');
+    bottom.reachArm(s, lo(s.sign * wl), V(s.sign * 0.4, 0, 0).add(up.clone().multiplyScalar(-1)), 'forward');
+  }
+  for (const p of [top, bottom]) for (const s of Side.both) p.setPalm(s, 'forward', 0);
+  return spec(rep(2.8, top, bottom, 0.45, 0.06), cam(60, 16, 4.2, 0.7), props, highlight);
+}
+B['dumbbell-bench-press'] = () => lyingPress(0, [P.dumbbells(), P.flatBench()], ['chest', 'triceps', 'deltoids']);
+B['incline-dumbbell-press'] = () => lyingPress(35, [P.dumbbells(), P.flatBench(35)], ['chest', 'deltoids', 'triceps']);
+B['barbell-bench-press'] = () => lyingPress(0, [P.barbell(1.6), P.flatBench()], ['chest', 'triceps', 'deltoids'], true);
+B['dumbbell-fly'] = () => {
+  const top = benchLie(0), open = benchLie(0);
+  const hi = overChest(top, 0, 0.60), wide = overChest(open, 0, 0.12);
+  for (const s of Side.both) {
+    top.reachArm(s, hi(s.sign * 0.10), V(s.sign, 0.2, 0), 'inward');
+    open.reachArm(s, wide(s.sign * 0.66), V(s.sign * 0.2, -0.6, 0), 'up');
+  }
+  return spec(rep(3.2, top, open, 0.45, 0.06), cam(50, 18, 4.2, 0.7), [P.dumbbells(), P.flatBench()], ['chest', 'deltoids']);
+};
+B['chest-dip'] = () => {
+  const up = Pose.standing(); up.pelvisOffset = V(0, 0.40, 0.02); up.setTorso({ pitch: 12 });
+  for (const s of Side.both) { up.set(s.hip, qx(-15)); up.set(s.knee, qx(80)); up.set(s.ankle, qx(20)); }
+  up.reachBoth(V(0.29, 1.12, 0.0), V(0.3, -0.2, -1), 'inward');
+  const down = up.clone(); down.pelvisOffset = V(0, 0.12, 0.10); down.setTorso({ pitch: 32 });
+  down.reachBoth(V(0.29, 1.12, 0.0), V(0.5, 0.6, -1), 'inward');
+  return spec(rep(2.8, up, down, 0.45, 0.06), cam(40, 6, 4.6, 1.1), [P.parallelBars()], ['chest', 'triceps', 'deltoids']);
+};
+
+// ---- Triceps
+B['bench-dip'] = () => {
+  const pose = (y, z) => {
+    const p = Pose.standing(); p.pelvisOffset = V(0, y - Skeleton.pelvisHeight, z); p.setTorso({ pitch: 4 });
+    for (const s of Side.both) p.reachLeg(s, V(s.sign * 0.13, Skeleton.ankleHeight, 1.05), V(0, 1, 0.3));
+    p.levelFeet();
+    p.reachBoth(V(0.21, 0.46, 0.22), V(0.2, 0.3, -1), 'forward');
+    return p;
+  };
+  return spec(rep(2.6, pose(0.56, 0.36), pose(0.30, 0.38), 0.45, 0.06), cam(70, 10, 4.2, 0.6), [P.bench(0)], ['triceps', 'chest', 'deltoids']);
+};
+B['dumbbell-kickback'] = () => {
+  const base = Pose.squat(0.25, 0.16, 0); base.pelvisOffset = V(0, -0.10, -0.12);
+  base.setTorso({ pitch: 60 }); base.setHead({ pitch: -30 });
+  const t = base.worldTransforms();
+  const tuck = base.clone(), ext = base.clone();
+  for (const s of Side.both) {
+    const sh = t[s.shoulder].position;
+    tuck.reachArm(s, V(sh.x + s.sign * 0.02, sh.y - 0.38, sh.z - 0.05), V(0, -0.2, 1), 'inward');
+    ext.reachArm(s, V(sh.x + s.sign * 0.02, sh.y + 0.02, sh.z - 0.54), V(0, -1, 0.2), 'inward');
+  }
+  return spec(rep(2.6, tuck, ext, 0.42, 0.10), cam(80, 8, 4.0, 0.9), [P.dumbbells()], ['triceps']);
+};
+B['cable-tricep-pushdown'] = () => {
+  const base = Pose.squat(0.08, 0.16); base.setTorso({ pitch: 10 }); const sy = base.shoulderY;
+  const up = base.clone(), down = base.clone();
+  up.reachBoth(V(0.11, sy - 0.22, 0.30), V(0.3, -1, -0.8), 'backward');
+  down.reachBoth(V(0.11, sy - 0.62, 0.20), V(0.3, 0.2, -1), 'backward');
+  return spec(rep(2.4, up, down, 0.42, 0.10), cam(55, 8, 4.2, 1.1), [P.cableColumn(2.05, V(0, 0, 0.62), 'straightBar')], ['triceps']);
+};
+B['lying-dumbbell-tricep-extension'] = () => {
+  const up = benchLie(0), down = benchLie(0);
+  const hi = overChest(up, 0, 0.58, -0.06), lo = overChest(down, 0, 0.22, -0.34);
+  for (const s of Side.both) {
+    up.reachArm(s, hi(s.sign * 0.12), V(s.sign * 0.2, 0.6, 0.2), 'inward');
+    down.reachArm(s, lo(s.sign * 0.12), V(s.sign * 0.2, 1, 0.6), 'inward');
+  }
+  return spec(rep(2.8, up, down, 0.45, 0.08), cam(70, 16, 4.2, 0.7), [P.dumbbells(), P.flatBench()], ['triceps']);
+};
+
+// ---- Shoulders
+function raise(front) {
+  const down = Pose.standing(); down.hangArms(front ? 0.20 : 0.22, 0.10, front ? 'backward' : 'inward');
+  const up = Pose.standing(); const sy = up.shoulderY;
+  if (front) up.reachBoth(V(0.20, sy + 0.02, 0.60), V(0.4, -1, 0), 'down');
+  else up.reachBoth(V(0.74, sy + 0.02, 0.08), V(0, -1, -0.3), 'down');
+  return spec(rep(2.8, down, up, 0.42, 0.10), cam(front ? 50 : 15, 8, 3.9, 1.0), [P.dumbbells()], front ? ['deltoids'] : ['deltoids', 'traps']);
+}
+B['dumbbell-lateral-raise'] = () => raise(false);
+B['dumbbell-front-raise'] = () => raise(true);
+
+// ---- Back & hinge
+B['pull-up'] = () => {
+  const hang = Pose.standing(); hang.pelvisOffset = V(0, 2.28 - 0.07 - 0.62 - Skeleton.shoulderHeight + 0.02, -0.05);
+  for (const s of Side.both) { hang.set(s.hip, qx(-10)); hang.set(s.knee, qx(40)); hang.set(s.ankle, qx(20)); }
+  hang.reachBoth(V(0.36, 2.28, -0.05), V(1, 0.1, -0.2), 'forward');
+  const top = hang.clone(); top.pelvisOffset.y += 0.46; top.setTorso({ pitch: -8 }); top.setHead({ pitch: -10 });
+  top.reachBoth(V(0.36, 2.28, -0.05), V(1, -0.5, -0.4), 'forward');
+  return spec(rep(3.0, hang, top, 0.42, 0.10), cam(150, 4, 5.2, 1.55), [P.pullUpBar()], ['lats', 'biceps', 'rearDeltoids', 'traps']);
+};
+function hinge(pitch, drop, back) {
+  const p = Pose.squat(0.05, 0.16); p.pelvisOffset = V(0, -drop, -back);
+  for (const s of Side.both) p.reachLeg(s, V(s.sign * 0.16, Skeleton.ankleHeight, 0), V(s.sign * 0.2, 0.1, 1));
+  p.levelFeet(); p.setTorso({ pitch }); p.setHead({ pitch: -pitch * 0.35 });
+  return p;
+}
+B['barbell-deadlift'] = () => {
+  const bottom = hinge(55, 0.30, 0.16); bottom.reachBoth(V(0.24, 0.24, 0.12), V(0.3, -0.2, -1), 'backward');
+  const top = hinge(0, 0.0, 0.0); top.reachBoth(V(0.24, 0.70, 0.12), V(0.3, -0.2, -1), 'backward');
+  return spec(rep(3.2, bottom, top, 0.45, 0.10), cam(65, 8, 4.4, 0.85), [P.barbell(1.8)], ['glutes', 'hamstrings', 'lowerBack', 'quads', 'traps']);
+};
+B['barbell-bent-over-row'] = () => {
+  const down = hinge(60, 0.12, 0.14), up = hinge(60, 0.12, 0.14);
+  down.reachBoth(V(0.26, 0.42, 0.26), V(0.3, -0.2, -1), 'backward');
+  up.reachBoth(V(0.28, 0.80, 0.14), V(0.6, 0.6, -1), 'backward');
+  return spec(rep(2.8, down, up, 0.42, 0.10), cam(70, 8, 4.2, 0.85), [P.barbell(1.6)], ['lats', 'rearDeltoids', 'traps', 'biceps', 'lowerBack']);
+};
+
+// ---- Legs & glutes
+B['bodyweight-squat'] = () => {
+  const up = Pose.squat(0.0, 0.18); up.hangArms(0.26, 0.06);
+  const down = Pose.squat(0.9, 0.18, 26); down.reachBoth(V(0.18, down.shoulderY - 0.02, 0.55), V(0.4, -1, 0), 'down');
+  return spec(rep(2.8, up, down, 0.45, 0.06), cam(40, 8, 4.0, 0.85), [], ['quads', 'glutes', 'hamstrings']);
+};
+B['dumbbell-reverse-lunge'] = () => {
+  const stand = Pose.standing(); stand.hangArms(0.26, 0.04);
+  const lunge = s => {
+    const p = Pose.standing(); p.pelvisOffset = V(0, -0.36, -0.14); p.setTorso({ pitch: 6 });
+    const o = Side.other(s);
+    p.reachLeg(s, V(s.sign * 0.12, Skeleton.ankleHeight, 0.18), V(0, 0.1, 1));
+    p.reachLeg(o, V(o.sign * 0.12, Skeleton.ankleHeight + 0.06, -0.62), V(0, 0.2, 1)); p.set(o.ankle, qx(45));
+    p.set(s.ankle, qIdentityFor(p, s));
+    p.hangArms(0.27, 0.04);
+    return p;
+  };
+  return spec(alternating(4.0, stand, lunge(Side.L), lunge(Side.R)), cam(70, 8, 4.4, 0.85), [P.dumbbells()], ['quads', 'glutes', 'hamstrings']);
+};
+/** Ankle rotation that keeps `side`'s foot flat after IK. */
+function qIdentityFor(p, side) { const t = p.worldTransforms(); return t[side.knee].rotation.clone().invert(); }
+function bridge(onBench) {
+  const pose = lift => {
+    const p = Pose.supine();
+    if (onBench) { p.set('pelvis', qx(-90 + 20 * (1 - lift))); p.pelvisOffset = V(0, 0.30 + lift * 0.22 - Skeleton.pelvisHeight, 0.10); }
+    else { p.set('pelvis', qx(-90 - 28 * lift)); p.pelvisOffset = V(0, 0.13 + lift * 0.22 - Skeleton.pelvisHeight, 0); }
+    for (const s of Side.both) p.reachLeg(s, V(s.sign * 0.16, Skeleton.ankleHeight, onBench ? 0.62 : 0.50), V(s.sign * 0.2, 1, 0.3));
+    p.levelFeet();
+    if (!onBench) { p.setTorso({ pitch: 26 * lift, split: 0.3 }); p.reachBoth(V(0.30, 0.03, -0.25), V(0.5, 0.5, 0.5), 'down'); }
+    else {
+      p.setTorso({ pitch: -12 * lift });
+      const t = p.worldTransforms(); const hips = t.pelvis.position;
+      p.reachBoth(V(0.24, hips.y + 0.10, hips.z + 0.02), V(0.5, 0.6, -0.4), 'backward');
+    }
+    return p;
+  };
+  const props = onBench ? [P.bench(0), P.barbell(1.6)] : [P.mat()];
+  return spec(rep(2.8, pose(0), pose(1), 0.42, 0.14), cam(75, 10, 4.2, 0.4), props, ['glutes', 'hamstrings']);
+}
+B['glute-bridge'] = () => bridge(false);
+B['barbell-hip-thrust'] = () => bridge(true);
+B['standing-calf-raise'] = () => {
+  const down = Pose.standing(); down.hangArms(0.27, 0.04); down.levelFeet();
+  const up = Pose.standing(); up.pelvisOffset = V(0, 0.08, 0); up.hangArms(0.27, 0.04);
+  for (const s of Side.both) up.set(s.ankle, qx(38));
+  return spec(rep(2.2, down, up, 0.42, 0.14), cam(70, 4, 3.8, 0.7), [P.dumbbells()], ['calves']);
+};
+
+// ---- Core & conditioning
+B['mountain-climber'] = () => {
+  const base = proneLine(22); plantHands(base, base);
+  const drive = s => {
+    const p = base.clone(); const t = p.worldTransforms(); const hip = t[s.hip].position;
+    p.reachLeg(s, V(s.sign * 0.12, 0.30, hip.z - 0.10), V(0, -0.2, 1));
+    p.set(s.ankle, qx(-10));
+    return p;
+  };
+  const lift = base.clone(); lift.pelvisOffset.y += 0.05;
+  return spec(clip(1.0, [[0, drive(Side.L)], [0.25, lift], [0.5, drive(Side.R)], [0.75, lift], [1, drive(Side.L)]]), cam(65, 12, 4.2, 0.45), [P.mat()], ['abs', 'obliques', 'quads', 'deltoids']);
+};
+B['burpee'] = () => {
+  const stand = Pose.standing(); stand.hangArms(0.26, 0.04);
+  const crouch = Pose.squat(1.0, 0.18, 45); crouch.reachBoth(V(0.24, 0.04, 0.45), V(0.4, -0.4, -1), 'down');
+  const plank = proneLine(24, { pivotZ: -0.60 }); plantHands(plank, plank);
+  const chestDown = proneLine(7, { pivotZ: -0.60 }); plantHands(chestDown, plank);
+  const jump = Pose.standing(); jump.pelvisOffset = V(0, 0.22, 0);
+  jump.reachBoth(V(0.24, jump.shoulderY + 0.60, 0.05), V(1, -0.2, -0.2), 'forward');
+  for (const s of Side.both) jump.set(s.ankle, qx(35));
+  const c = clip(3.2, [[0, stand], [0.15, crouch], [0.28, plank], [0.40, chestDown], [0.52, plank], [0.65, crouch], [0.80, jump], [1, stand]]);
+  return spec(c, cam(60, 8, 4.8, 0.8), [P.mat()], ['chest', 'quads', 'glutes', 'abs', 'deltoids']);
+};
+B['jumping-jacks'] = () => {
+  const closed = Pose.standing(); closed.hangArms(0.24, 0.02, 'inward');
+  for (const s of Side.both) closed.reachLeg(s, V(s.sign * 0.10, Skeleton.ankleHeight, 0), V(0, 0, 1));
+  closed.levelFeet();
+  const open = Pose.standing(); open.pelvisOffset = V(0, -0.03, 0);
+  for (const s of Side.both) open.reachLeg(s, V(s.sign * 0.36, Skeleton.ankleHeight, 0), V(0, 0, 1));
+  open.levelFeet();
+  open.reachBoth(V(0.30, open.shoulderY + 0.60, 0.02), V(1, -0.2, -0.2), 'forward');
+  const air = closed.clone(); air.pelvisOffset = V(0, 0.08, 0);
+  return spec(clip(1.1, [[0, closed], [0.25, air], [0.5, open], [0.75, air], [1, closed]]), cam(20, 6, 4.4, 1.0), [], ['calves', 'deltoids', 'glutes']);
+};
+function lieBack(knees = true) {
+  const p = Pose.supine();
+  if (knees) { for (const s of Side.both) p.reachLeg(s, V(s.sign * 0.16, Skeleton.ankleHeight, 0.55), V(s.sign * 0.2, 1, 0.3)); p.levelFeet(); }
+  return p;
+}
+B['crunch'] = () => {
+  const down = lieBack(); const t = down.worldTransforms();
+  down.reachBoth(V(0.14, 0.24, t.head.position.z + 0.02), V(1, 0.6, 0), 'inward');
+  const up = lieBack(); up.setTorso({ pitch: 34, split: 0.3 }); up.setHead({ pitch: 10 });
+  const tu = up.worldTransforms();
+  up.reachBoth(V(0.14, tu.head.position.y + 0.08, tu.head.position.z - 0.04), V(1, 0.6, 0), 'inward');
+  return spec(rep(2.4, down, up, 0.42, 0.10), cam(65, 22, 4.2, 0.3), [P.mat()], ['abs', 'obliques']);
+};
+B['dead-bug'] = () => {
+  const base = lieBack(false); const t = base.worldTransforms();
+  const table = base.clone();
+  for (const s of Side.both) table.reachLeg(s, V(s.sign * 0.14, 0.52, 0.42), V(0, 1, 0.2));
+  table.reachBoth(V(0.20, 0.72, t.shoulderL.position.z), V(1, 0, -0.3), 'inward');
+  const ext = s => {
+    const p = table.clone(); const o = Side.other(s);
+    p.reachLeg(s, V(s.sign * 0.14, 0.14, 0.95), V(0, 1, 0.2));
+    p.reachArm(o, V(o.sign * 0.20, 0.10, t.shoulderL.position.z - 0.62), V(o.sign, 0.5, 0), 'inward');
+    return p;
+  };
+  return spec(alternating(4.0, table, ext(Side.L), ext(Side.R)), cam(70, 18, 4.4, 0.35), [P.mat()], ['abs', 'obliques']);
+};
+B['russian-twist'] = () => {
+  const base = Pose.seated(0.10, 0.10); base.pelvisOffset = V(0, 0.12 - Skeleton.pelvisHeight + 0.06, 0); base.set('pelvis', qx(-35));
+  for (const s of Side.both) base.reachLeg(s, V(s.sign * 0.13, 0.16, 0.58), V(s.sign * 0.15, 1, 0.6));
+  base.levelFeet();
+  const side = s => {
+    const p = base.clone(); p.setTorso({ pitch: 12, yaw: s.sign * 40 });
+    const t = p.worldTransforms(); const c = t.chest.position; const fwd = V(0, 0, 1).applyQuaternion(t.chest.rotation);
+    const target = c.clone().add(fwd.multiplyScalar(0.34)).add(V(s.sign * 0.18, -0.22, 0));
+    for (const h of Side.both) p.reachArm(h, target.clone().add(V(h.sign * 0.06, 0, 0)), V(h.sign, -0.5, -0.4), 'inward');
+    return p;
+  };
+  const mid = base.clone(); { const t = mid.worldTransforms(); const c = t.chest.position; for (const h of Side.both) mid.reachArm(h, V(h.sign * 0.06, c.y - 0.22, c.z + 0.34), V(h.sign, -0.5, -0.4), 'inward'); }
+  return spec(alternating(2.4, mid, side(Side.L), side(Side.R)), cam(35, 14, 4.2, 0.35), [P.mat()], ['obliques', 'abs']);
+};
+B['high-knees'] = () => {
+  const run = s => {
+    const p = Pose.standing(); p.pelvisOffset = V(0, 0.03, 0); const o = Side.other(s);
+    p.reachLeg(s, V(s.sign * 0.12, 0.62, 0.34), V(0, 0.3, 1)); p.set(s.ankle, qIdentityFor(p, s).multiply(qx(25)));
+    p.reachLeg(o, V(o.sign * 0.12, Skeleton.ankleHeight + 0.03, 0), V(0, 0, 1)); p.set(o.ankle, qx(20));
+    const sy = p.shoulderY;
+    p.reachArm(o, V(o.sign * 0.22, sy - 0.25, 0.30), V(o.sign * 0.3, -0.6, -1), 'inward');
+    p.reachArm(s, V(s.sign * 0.22, sy - 0.48, -0.20), V(s.sign * 0.3, -0.3, -1), 'inward');
+    return p;
+  };
+  return spec(clip(0.8, [[0, run(Side.L)], [0.5, run(Side.R)], [1, run(Side.L)]]), cam(50, 6, 4.4, 1.0), [], ['quads', 'abs', 'calves']);
+};
+
 const cache = new Map();
 export function motionSpec(id) {
   if (cache.has(id)) return cache.get(id);
@@ -557,7 +846,7 @@ export function anatomySpec(highlight, back) {
   return spec(clip(1, [[0, p], [1, p]]), cam(back ? 180 : 0, 2, 5.2, 0.93, 24), [], highlight, 0.25);
 }
 
-const HELD = new Set(['dumbbells', 'barbell', 'latPulldown', 'cableRow', 'cableColumn', 'kettlebell', 'abWheel', 'band',
+const HELD = new Set(['pullUpBar', 'dumbbells', 'barbell', 'latPulldown', 'cableRow', 'cableColumn', 'kettlebell', 'abWheel', 'band',
   'parallelBars', 'assistMachine', 'battleRopes', 'backExtensionMachine', 'crunchMachine', 'stepmill']);
 export function effectiveHandCurl(s) {
   if (s.handCurl != null) return s.handCurl;

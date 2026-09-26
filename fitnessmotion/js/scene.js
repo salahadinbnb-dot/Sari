@@ -3,10 +3,10 @@
 // including the studio environment map and the muscle-region shader.
 import * as THREE from '../vendor/three.module.min.js';
 import { GLTFLoader } from '../vendor/loaders/GLTFLoader.js';
-import { Pose, Skeleton, Side, orthonormalized, qFromBasis, Vec as V, deg } from './skeleton.js?v=6';
-import { makeProp } from './props.js?v=6';
-import { motionSpec, effectiveHandCurl } from './library.js?v=6';
-import { MUSCLE_BIT, GROUP_OF_ID } from './muscles.js?v=6';
+import { Pose, Skeleton, Side, orthonormalized, qFromBasis, Vec as V, deg } from './skeleton.js?v=7';
+import { makeProp } from './props.js?v=7';
+import { motionSpec, effectiveHandCurl } from './library.js?v=7';
+import { MUSCLE_BIT, GROUP_OF_ID } from './muscles.js?v=7';
 
 // ---- shared assets (fetched once; each figure parses its own copy of the glTF)
 // The body ships as glTF JSON with a base64 buffer (hosts only serve standard web types). Decoding the

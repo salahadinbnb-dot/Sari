@@ -1,6 +1,6 @@
 // Equipment: hand-held props, machines, cables and bands. Port of FitnessMotion/Motion/Props.swift.
 import * as THREE from '../vendor/three.module.min.js';
-import { orthonormalized, qFromBasis, Vec as V, deg, Side } from './skeleton.js?v=6';
+import { orthonormalized, qFromBasis, Vec as V, deg, Side } from './skeleton.js?v=7';
 
 const mat = (color, roughness = 0.55, metalness = 0) => new THREE.MeshStandardMaterial({ color, roughness, metalness });
 export const Materials = {
@@ -202,6 +202,30 @@ const Furniture = {
     return n;
   },
   mat() { const n = new THREE.Group(); n.add(Geo.box(0.7, 0.015, 1.9, Materials.rubber, V(0, 0.0075, 0))); return n; },
+  // full-length bench for lying work: pad runs from the hips (z≈0.2) back under the head (−Z)
+  flatBench(incline = 0) {
+    const n = new THREE.Group(); const pad = Materials.padding, frame = Materials.metalFrame;
+    n.add(Geo.box(0.30, 0.07, 0.38, pad, V(0, 0.415, 0.04)));
+    if (incline > 3) {
+      const len = 0.85, a = deg(incline);
+      n.add(Geo.box(0.30, 0.07, len, pad, V(0, 0.45 + (len / 2) * Math.sin(a), -0.15 - (len / 2) * Math.cos(a)), qxd(incline)));
+      n.add(Geo.box(0.06, 0.45 + len * Math.sin(a) * 0.6, 0.06, frame, V(0, (0.45 + len * Math.sin(a) * 0.6) / 2, -0.15 - len * Math.cos(a) * 0.7)));
+    } else {
+      n.add(Geo.box(0.30, 0.07, 0.80, pad, V(0, 0.415, -0.55)));
+    }
+    for (const z of [0.12, -0.80]) {
+      n.add(Geo.box(0.06, 0.38, 0.06, frame, V(0, 0.19, z)));
+      n.add(Geo.box(0.46, 0.05, 0.06, frame, V(0, 0.025, z)));
+    }
+    n.add(Geo.box(0.06, 0.05, 0.95, frame, V(0, 0.025, -0.34)));
+    return n;
+  },
+  pullUpBar() {
+    const n = new THREE.Group(); const frame = Materials.metalFrame;
+    for (const x of [-0.55, 0.55]) { n.add(Geo.box(0.07, 2.35, 0.07, frame, V(x, 1.175, -0.05))); n.add(Geo.box(0.07, 0.06, 0.9, frame, V(x, 0.03, -0.05))); }
+    n.add(Geo.cylinder(0.018, 1.17, frame, V(0, 2.28, -0.05), qz90));
+    return n;
+  },
   squatRack() {
     const n = new THREE.Group(); const frame = Materials.metalFrame;
     for (const x of [-0.65, 0.65]) { n.add(Geo.box(0.07, 2.2, 0.07, frame, V(x, 1.1, -0.6))); n.add(Geo.box(0.07, 0.06, 0.8, frame, V(x, 0.03, -0.5))); }
@@ -336,6 +360,8 @@ export function makeProp(d) {
     case 'battleRopes': return new BattleRopesProp(d.anchor);
     case 'mat': return new StaticProp(Furniture.mat());
     case 'squatRack': return new StaticProp(Furniture.squatRack());
+    case 'flatBench': return new StaticProp(Furniture.flatBench(d.incline || 0));
+    case 'pullUpBar': return new StaticProp(Furniture.pullUpBar());
     default: return new PropNode();
   }
 }

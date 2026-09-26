@@ -300,3 +300,11 @@ canvas.live { width: 100%; height: 100%; display: block; }
 /* the pinned button's fade must not swallow taps on the rows behind it */
 .sticky { pointer-events: none; }
 .sticky > * { pointer-events: auto; }
+
+/* coaching cues + new-exercise badge */
+.howto { margin: 10px 0 0; padding: 0; list-style: none; counter-reset: step; }
+.howto li { counter-increment: step; display: flex; gap: 12px; font-size: 16px; line-height: 1.4; color: #d9d9d9; padding: 7px 0; }
+.howto li::before { content: counter(step); flex: 0 0 24px; height: 24px; border-radius: 50%; background: #1f2a3a; color: var(--accent); font: 700 13px/24px -apple-system, Roboto, system-ui, sans-serif; text-align: center; }
+.changed.tip { font-size: 15px; color: #bdbdbd; }
+.changed.tip .s { flex: 0 0 24px; height: 24px; border-radius: 50%; background: #3a2a14; color: #f0b54a; font: 800 14px/24px -apple-system, Roboto, system-ui, sans-serif; text-align: center; }
+.add-row .name .new { font-style: normal; margin-left: 8px; padding: 1px 6px; border-radius: 6px; background: var(--accent); color: #fff; font-size: 10px; font-weight: 700; letter-spacing: .5px; vertical-align: 2px; }

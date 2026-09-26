@@ -1,7 +1,8 @@
 // FitnessMotion web app: screens and interactions (three tabs: Profile · Workouts · Planning).
-import { Store, CATALOG, BY_ID, GROUPS, GROUP_MUSCLES, ROUTINES, OBJECTIVES, REP_RANGES, EXPERIENCE, EQUIPMENT, summary, isDone, restLabel } from './store.js?v=6';
-import { loadAssets, LiveView, ThumbnailRenderer } from './scene.js?v=6';
-import { anatomySpec } from './library.js?v=6';
+import { Store, CATALOG, BY_ID, GROUPS, GROUP_MUSCLES, ROUTINES, OBJECTIVES, REP_RANGES, EXPERIENCE, EQUIPMENT, NEW_IDS, summary, isDone, restLabel } from './store.js?v=7';
+import { CUES } from './cues.js?v=7';
+import { loadAssets, LiveView, ThumbnailRenderer } from './scene.js?v=7';
+import { anatomySpec } from './library.js?v=7';
 
 const $ = (sel, el = document) => el.querySelector(sel);
 // Pre-warmed WebGL viewers (parsing the body once per viewer), re-parented into whichever screen needs them.
@@ -358,7 +359,7 @@ function openAddExercise(inSession, onDone, { focusSearch = false } = {}) {
     if (!rows.length) list.appendChild(h(`<div class="empty">🔍<b>No exercises match "${esc(q)}"</b>Try a muscle group like "chest" or part of a name.</div>`));
     for (const d of rows) {
       const on = sel.has(d.id);
-      const r = h(`<button class="add-row ${on ? 'on' : ''}"><span class="thumb"></span><span class="name">${esc(d.name)}<small>${d.groups.join(' · ')}</small></span><span class="check ${on ? 'on' : ''}">${on ? '✓' : ''}</span></button>`);
+      const r = h(`<button class="add-row ${on ? 'on' : ''}"><span class="thumb"></span><span class="name">${esc(d.name)}${NEW_IDS.has(d.id) ? '<i class="new">NEW</i>' : ''}<small>${d.groups.join(' · ')}</small></span><span class="check ${on ? 'on' : ''}">${on ? '✓' : ''}</span></button>`);
       thumbInto($('.thumb', r), d.id, 144);
       r.onclick = () => { on ? sel.delete(d.id) : sel.add(d.id); drawList(); updateBtn(); };
       list.appendChild(r);
@@ -421,6 +422,12 @@ async function openSession({ selectId } = {}) {
     if (restRemaining > 0) {
       const r = h(`<div class="rest"><div class="r1">⏱ Rest<span class="time">${timeStr(restRemaining)}</span><button class="skip">Skip</button></div><div class="bar"><i style="width:${(restTotal - restRemaining) / Math.max(restTotal, 1) * 100}%"></i></div></div>`);
       $('.skip', r).onclick = () => endRest(); c.appendChild(r);
+    }
+    const cue = CUES[cur.exerciseId];
+    if (cue) {
+      c.appendChild(h('<h2>How To Do It</h2>'));
+      c.appendChild(h(`<ol class="howto">${cue.steps.map(x => `<li>${esc(x)}</li>`).join('')}</ol>`));
+      c.appendChild(h(`<div class="changed tip"><span class="s">!</span><span>${esc(cue.tip)}</span></div>`));
     }
     c.appendChild(h(`<h2>What's Changed</h2>`));
     c.appendChild(h(`<div class="changed"><span class="s">✦</span><span>${changed}</span></div>`));
