@@ -1,0 +1,28 @@
+<!doctype html><meta charset=utf-8><title>Motion preview</title>
+<style>body{margin:0;background:#111;color:#ddd;font:12px sans-serif}.row{display:flex;gap:4px;align-items:center;margin:4px}.row b{width:170px}img{width:200px;height:200px;background:#000}</style>
+<div id=out></div>
+<script type=module>
+// Dev-only contact sheet: ?ids=a,b,c renders each exercise at several phases from its own camera and from the side.
+import { loadAssets, MotionScene } from '../js/scene.js?v=6';
+import { motionSpec, cam } from '../js/library.js?v=6';
+import * as THREE from '../vendor/three.module.min.js';
+const ids = new URLSearchParams(location.search).get('ids').split(',');
+const assets = await loadAssets('../assets/');
+const scene = await MotionScene.create(assets);
+const canvas = document.createElement('canvas');
+const r = new THREE.WebGLRenderer({ canvas, antialias: true, preserveDrawingBuffer: true });
+r.setSize(300, 300, false); scene.camera.aspect = 1;
+const phases = [0, 0.25, 0.42, 0.6, 0.8];
+for (const id of ids) {
+  const spec = motionSpec(id);
+  for (const view of ['own', 'side']) {
+    const row = document.createElement('div'); row.className = 'row'; row.innerHTML = `<b>${id} ${view}</b>`;
+    scene.zoomOut = 1.25; scene.shift = 0;
+    scene.load(spec);
+    if (view === 'side') scene.setCamera(cam(90, 6, 4.6, spec.camera.targetHeight));
+    for (const ph of phases) { scene.seek(ph); r.render(scene.scene, scene.camera); const img = new Image(); img.src = canvas.toDataURL(); row.appendChild(img); }
+    document.getElementById('out').appendChild(row);
+  }
+}
+document.title = 'done';
+</script>
