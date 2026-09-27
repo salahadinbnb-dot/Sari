@@ -11,18 +11,38 @@ export function createRangeReader(url: string, signal?: AbortSignal, fetcher: ty
       headers: { Range: `bytes=${start}-${end - 1}` },
       credentials: "omit", mode: "cors", referrerPolicy: "no-referrer", signal,
     });
-    const range = response.headers.get("content-range")?.match(/^bytes (\d+)-(\d+)\/(\d+)$/);
-    if (response.status !== 206 || !range || Number(range[1]) !== start || Number(range[2]) !== end - 1 || !Number.isSafeInteger(Number(range[3])) || Number(range[3]) < end) {
+    const rangeHeader = response.headers.get("content-range");
+    const range = rangeHeader?.match(/^bytes (\d+)-(\d+)\/(\d+)$/);
+    if (response.status !== 206 || (rangeHeader !== null && (!range || Number(range[1]) !== start || Number(range[2]) !== end - 1))) {
       await response.body?.cancel();
-      throw new Error("This host does not support audio-only range reads. The full video was not downloaded.");
+      throw new Error(`This host did not return the requested audio range (HTTP ${response.status}). The full video was not downloaded.`);
     }
-    const total = Number(range[3]);
+    // Content-Range is not CORS-safelisted. X permits Range requests but does
+    // not expose that header; HEAD gives its full Content-Length without a body.
+    let total = range ? Number(range[3]) : size;
+    if (total === undefined) {
+      const head = await fetcher(url, {
+        method: "HEAD", credentials: "omit", mode: "cors",
+        referrerPolicy: "no-referrer", signal,
+      });
+      await head.body?.cancel();
+      total = head.ok ? Number(head.headers.get("content-length")) : NaN;
+    }
+    if (!Number.isSafeInteger(total) || total < end) {
+      await response.body?.cancel();
+      throw new Error("The video host did not provide a usable file size for audio range reads.");
+    }
     if (size !== undefined && total !== size) {
       await response.body?.cancel();
       throw new Error("The source video changed while reading its audio. Please retry.");
     }
     size = total;
-    const expected = Number(range[2]) - start + 1;
+    const expected = end - start;
+    const length = response.headers.get("content-length");
+    if (length !== null && Number(length) !== expected) {
+      await response.body?.cancel();
+      throw new Error("The source ignored the requested byte range.");
+    }
     const reader = response.body?.getReader();
     if (!reader) throw new Error("The source returned no audio data.");
     const result = new Uint8Array(expected);
