@@ -51,9 +51,19 @@ export function buildSrt(transcript: string, timestampedTranscript?: string): st
     cues = sentences.map((sentence, i) => ({ start: i * SECS_PER_CUE, text: sentence }));
   }
 
-  return cues
+  // Display timestamps have whole-second precision, so adjacent Whisper
+  // segments may share a start. Merge their text instead of emitting invisible
+  // zero-duration subtitles (or overlapping cues at the same timestamp).
+  const merged: typeof cues = [];
+  for (const cue of cues) {
+    const previous = merged[merged.length - 1];
+    if (previous && cue.start <= previous.start) previous.text += ` ${cue.text}`;
+    else merged.push({ ...cue });
+  }
+
+  return merged
     .map((cue, i) => {
-      const end = i < cues.length - 1 ? cues[i + 1].start : cue.start + 3;
+      const end = i < merged.length - 1 ? merged[i + 1].start : cue.start + 3;
       return `${i + 1}\n${formatSrtTime(cue.start)} --> ${formatSrtTime(end)}\n${cue.text}\n`;
     })
     .join("\n");
