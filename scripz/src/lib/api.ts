@@ -1,7 +1,9 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { SourceType } from "@/types/history";
 import { whisperEngine, type EngineProgress } from "@/lib/whisper/engine";
-import { decodeToWhisperPcm, fetchMediaBytes, isHlsUrl } from "@/lib/whisper/audio";
+import { decodeToWhisperPcm, isHlsUrl } from "@/lib/whisper/audio";
+import { streamAudio } from "@/lib/whisper/streamAudio";
+import type { WhisperChunk } from "@/lib/whisper/types";
 import { formatTranscript } from "@/lib/whisper/format";
 import { getSettings, MODELS } from "@/lib/settings";
 
@@ -202,8 +204,6 @@ export interface TranscribeCallbacks {
   signal?: AbortSignal;
 }
 
-const fmtMb = (bytes: number) => `${(bytes / 1024 / 1024).toFixed(1)} MB`;
-
 /** Merges media-side progress with the model download running in parallel. */
 function progressChannel(onProgress?: (p: TranscribeProgress) => void) {
   let primary: TranscribeProgress = { phase: "download", fraction: null, detail: "Preparing…" };
@@ -271,22 +271,42 @@ export async function transcribeMedia(
   try {
     if (isHlsUrl(source)) throw new Error("Streamed (HLS) sources need the cloud transcriber.");
 
-    // Warm the model up while the video downloads.
-    void whisperEngine.preload(model, channel.onEngine);
-    channel.set({ phase: "download", fraction: null, detail: "Downloading the video…" });
-
-    const bytes = await fetchMediaBytes(
-      source,
-      (loaded, total) =>
+    // Transcript first: range-read audio packets, then transcribe each small part.
+    // Never buffer the full video or fetch later parts while Whisper is busy.
+    void whisperEngine.preload(model, channel.onEngine).catch(() => undefined);
+    channel.set({ phase: "decode", fraction: null, detail: "Reading the audio track — no full video download…" });
+    const chunks: WhisperChunk[] = [];
+    const texts: string[] = [];
+    let durationSeconds = 0;
+    for await (const part of streamAudio(source, opts.signal)) {
+      opts.signal?.throwIfAborted();
+      const previous = formatTranscript(chunks, texts.join(" ")).transcript;
+      const detail = `Transcribing audio · ${Math.floor(part.start)}–${Math.ceil(part.end)} seconds`;
+      channel.set({ phase: "transcribe", fraction: part.start / part.duration, detail, live: previous });
+      const result = await whisperEngine.transcribe(part.audio, { model, language: settings.language }, (p) => {
+        if (p.phase === "model") { channel.onEngine(p); return; }
         channel.set({
-          phase: "download",
-          fraction: total ? loaded / total : null,
-          detail: total ? `Downloading the video · ${fmtMb(loaded)} of ${fmtMb(total)}` : `Downloading the video · ${fmtMb(loaded)}`,
-        }),
-      opts.signal,
-    );
-    if (opts.signal?.aborted) throw new Error("Cancelled");
-    return await whisperFromBytes(bytes, model, settings.language, channel, opts.signal);
+          phase: "transcribe",
+          fraction: (part.start + (p.fraction ?? 0) * (part.end - part.start)) / part.duration,
+          detail,
+          live: [previous, p.live].filter(Boolean).join("\n\n"),
+        });
+      });
+      opts.signal?.throwIfAborted();
+      texts.push(result.text);
+      chunks.push(...result.chunks.map((chunk) => ({
+        ...chunk,
+        start: part.start + chunk.start,
+        end: chunk.end === null ? null : part.start + chunk.end,
+      })));
+      durationSeconds = part.duration;
+      channel.set({ phase: "transcribe", fraction: part.end / part.duration,
+        detail: "Transcript growing — reading the next audio part…",
+        live: formatTranscript(chunks, texts.join(" ")).transcript });
+    }
+    const formatted = formatTranscript(chunks, texts.join(" "));
+    return { transcript: formatted.transcript || "[No speech detected]",
+      timestampedTranscript: formatted.timestampedTranscript, engine: "device", durationSeconds };
   } catch (e) {
     if (opts.signal?.aborted) throw e;
     deviceError = e;
@@ -311,3 +331,4 @@ export async function transcribeLocalFile(file: File, opts: TranscribeCallbacks 
   if (opts.signal?.aborted) throw new Error("Cancelled");
   return whisperFromBytes(bytes, model, settings.language, channel, opts.signal);
 }
+
