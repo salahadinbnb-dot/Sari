@@ -1,0 +1,52 @@
+// Never accept a full-file response when transcription only requested a byte range.
+export function createRangeReader(url: string, signal?: AbortSignal, fetcher: typeof fetch = fetch) {
+  let size: number | undefined;
+  const read = async (start: number, end: number): Promise<Uint8Array> => {
+    signal?.throwIfAborted();
+    const response = await fetcher(url, {
+      headers: { Range: `bytes=${start}-${end - 1}` },
+      credentials: "omit", mode: "cors", referrerPolicy: "no-referrer", signal,
+    });
+    const range = response.headers.get("content-range")?.match(/^bytes (\d+)-(\d+)\/(\d+)$/);
+    if (response.status !== 206 || !range || Number(range[1]) !== start || Number(range[2]) !== end - 1 || !Number.isSafeInteger(Number(range[3])) || Number(range[3]) < end) {
+      await response.body?.cancel();
+      throw new Error("This host does not support audio-only range reads. The full video was not downloaded.");
+    }
+    const total = Number(range[3]);
+    if (size !== undefined && total !== size) {
+      await response.body?.cancel();
+      throw new Error("The source video changed while reading its audio. Please retry.");
+    }
+    size = total;
+    const expected = Number(range[2]) - start + 1;
+    const reader = response.body?.getReader();
+    if (!reader) throw new Error("The source returned no audio data.");
+    const result = new Uint8Array(expected);
+    let offset = 0;
+    try {
+      for (;;) {
+        signal?.throwIfAborted();
+        const { done, value } = await reader.read();
+        if (done) break;
+        if (offset + value.length > expected) throw new Error("The source ignored the requested byte range.");
+        result.set(value, offset);
+        offset += value.length;
+      }
+      if (offset !== expected) throw new Error("Incomplete audio data. Please retry.");
+      return result;
+    } finally {
+      await reader.cancel().catch(() => undefined);
+      reader.releaseLock();
+    }
+  };
+  return {
+    async getSize() { if (size === undefined) await read(0, 1); return size!; },
+    async read(start: number, end: number) {
+      if (!Number.isSafeInteger(start) || !Number.isSafeInteger(end) || start < 0 || end <= start || end - start > 16 * 1024 * 1024) {
+        throw new Error("Invalid or oversized audio metadata range.");
+      }
+      return read(start, end);
+    },
+  };
+}
+
