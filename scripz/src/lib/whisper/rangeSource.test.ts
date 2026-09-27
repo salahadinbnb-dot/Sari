@@ -49,5 +49,20 @@ describe("transcription range reads", () => {
     await expect(createRangeReader("https://example.com/v.mp4", controller.signal, fetcher).getSize()).rejects.toThrow();
     expect(fetcher).not.toHaveBeenCalled();
   });
-});
 
+  it("coalesces tiny audio packets into bounded 64 KB reads", async () => {
+    const fetcher = vi.fn<typeof fetch>(async (_url, init) => {
+      const range = new Headers(init?.headers).get("Range")!;
+      const [, a, b] = range.match(/bytes=(\d+)-(\d+)/)!;
+      return new Response(new Uint8Array(Number(b) - Number(a) + 1), {
+        status: 206, headers: { "Content-Range": `bytes ${a}-${b}/1000000000` },
+      });
+    });
+    const reader = createRangeReader("https://example.com/video.mp4", undefined, fetcher);
+    await reader.getSize();
+    expect((await reader.read(100, 200)).length).toBe(100);
+    expect((await reader.read(200, 400)).length).toBe(200);
+    expect(fetcher).toHaveBeenCalledTimes(2);
+    expect(new Headers(fetcher.mock.calls[1][1]?.headers).get("Range")).toBe("bytes=0-65535");
+  });
+});

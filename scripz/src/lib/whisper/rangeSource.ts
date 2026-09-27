@@ -1,6 +1,10 @@
 // Never accept a full-file response when transcription only requested a byte range.
 export function createRangeReader(url: string, signal?: AbortSignal, fetcher: typeof fetch = fetch) {
   let size: number | undefined;
+  // AAC packets are tiny. Cache a few bounded pages so decoding one second does
+  // not require dozens of network round trips. Never prefetch the rest of a file.
+  const pageSize = 64 * 1024;
+  const pages = new Map<number, Uint8Array>();
   const read = async (start: number, end: number): Promise<Uint8Array> => {
     signal?.throwIfAborted();
     const response = await fetcher(url, {
@@ -45,8 +49,18 @@ export function createRangeReader(url: string, signal?: AbortSignal, fetcher: ty
       if (!Number.isSafeInteger(start) || !Number.isSafeInteger(end) || start < 0 || end <= start || end - start > 16 * 1024 * 1024) {
         throw new Error("Invalid or oversized audio metadata range.");
       }
+      signal?.throwIfAborted();
+      const pageStart = Math.floor(start / pageSize) * pageSize;
+      if (size !== undefined && end <= Math.min(pageStart + pageSize, size)) {
+        let page = pages.get(pageStart);
+        if (!page) {
+          page = await read(pageStart, Math.min(pageStart + pageSize, size));
+          if (pages.size >= 8) pages.delete(pages.keys().next().value!);
+          pages.set(pageStart, page);
+        }
+        return page.slice(start - pageStart, end - pageStart);
+      }
       return read(start, end);
     },
   };
 }
-
