@@ -1,13 +1,24 @@
 // DOM HUD: scorebug, step tracker, captions, freeze verdicts, player tags, title/end cards.
 import * as THREE from 'three';
-import { STEPS, CAPTIONS, VERDICTS, TAGS } from './script.js';
+import * as S1 from './script.js';
 import { clamp, smooth } from './motion.js';
 
 const el = (tag, cls, html = '') => { const e = document.createElement(tag); if (cls) e.className = cls; e.innerHTML = html; return e; };
 const fmtClock = (s) => { s = Math.max(0, s); const m = Math.floor(s / 60); const r = Math.floor(s % 60); return `${m}:${String(r).padStart(2, '0')}`; };
 
+// cfg lets the 1v1 (v2) script reuse this HUD; defaults are the original ball-screen script.
+const V1 = {
+  STEPS: S1.STEPS, CAPTIONS: S1.CAPTIONS, VERDICTS: S1.VERDICTS, TAGS: S1.TAGS,
+  FREEZE_STEP: { notbeaten: 2, opening: 4, help: 5, setup: 0 },
+  TITLE: `<div class="kick">ONE POSSESSION</div><div class="big">YOU vs. THE<br>SQUARE DEFENDER</div><div class="sub">Behind-the-player POV · read it like the pros</div>`,
+  END: `<div class="big">YOUR DRIVE IS A <span>TEST</span>,<br>NOT A COMMITMENT.</div><div class="sub">Square defender? &nbsp;Test → Checkpoint → Screen → Read the help.</div>`,
+  SCORE_AT: 11.62, END_AT: 11.95, SHOT_RESET_AT: 11.6, LABELS: ['space', 'arm', 'check', 'set', 'gap', 'ghost'],
+};
+
 export class Hud {
-  constructor(root) {
+  constructor(root, cfg = V1) {
+    this.cfg = cfg = { ...V1, ...cfg };
+    const { STEPS, TAGS } = cfg;
     this.root = root;
     root.innerHTML = '';
     // vignette for freezes
@@ -39,39 +50,41 @@ export class Hud {
     });
     // floor labels
     this.labels = {};
-    for (const k of ['space', 'arm', 'check', 'set', 'gap', 'ghost']) { const l = el('div', 'flabel ' + k); this.tagsEl.appendChild(l); this.labels[k] = l; }
+    for (const k of cfg.LABELS) { const l = el('div', 'flabel ' + k); this.tagsEl.appendChild(l); this.labels[k] = l; }
     // title + end card
-    this.title = el('div', 'titlecard', `<div class="kick">ONE POSSESSION</div><div class="big">YOU vs. THE<br>SQUARE DEFENDER</div><div class="sub">Behind-the-player POV · read it like the pros</div>`);
+    this.title = el('div', 'titlecard', cfg.TITLE);
     root.appendChild(this.title);
-    this.end = el('div', 'endcard', `<div class="big">YOUR DRIVE IS A <span>TEST</span>,<br>NOT A COMMITMENT.</div><div class="sub">Square defender? &nbsp;Test → Checkpoint → Screen → Read the help.</div>`);
+    this.end = el('div', 'endcard', cfg.END);
     root.appendChild(this.end);
     this.scH = this.bug.querySelector('#scH'); this.gclk = this.bug.querySelector('#gclk'); this.sclk = this.bug.querySelector('#sclk');
   }
 
   update(fr, st, W, camera, projFn, headPos) {
+    const { CAPTIONS, VERDICTS, TAGS, FREEZE_STEP, SCORE_AT, END_AT } = this.cfg;
+    const SHOT_RESET_AT = this.cfg.SHOT_RESET_AT ?? SCORE_AT;
     const freeze = fr.freeze || null;
     const fu = fr.fu || 0;
     // clocks run with sim time only
     this.gclk.textContent = fmtClock(31.0 - st) + '.' + Math.floor(((31.0 - st) % 1) * 10);
     const shot = Math.max(0, Math.ceil(21 - st));
-    this.sclk.textContent = st > 11.6 ? '24' : String(shot);
-    this.scH.textContent = st > 11.62 ? '100' : '98';
-    this.bug.classList.toggle('scored', st > 11.62 && st < 12.6);
+    this.sclk.textContent = st > SHOT_RESET_AT ? '24' : String(shot);
+    this.scH.textContent = st > SCORE_AT ? '100' : '98';
+    this.bug.classList.toggle('scored', st > SCORE_AT && st < SCORE_AT + 1.0);
     // intro/title
     const introOn = freeze === 'intro';
     this.title.style.opacity = introOn ? String(clamp(fu * 5, 0, 1) * clamp((1 - fu) * 4, 0, 1)) : '0';
     this.title.style.transform = `translateX(${introOn ? (1 - smooth(fu * 3)) * -60 : -60}px) skewX(-8deg)`;
     // end card
-    const endU = clamp((st - 11.95) / 0.5, 0, 1);
+    const endU = clamp((st - END_AT) / 0.5, 0, 1);
     this.end.style.opacity = String(endU);
     this.end.style.transform = `translateY(${(1 - endU) * 30}px)`;
     // steps
     const cap = CAPTIONS.find(c => st >= c.from && st < c.to) || null;
-    const stepNow = freeze === 'notbeaten' ? 2 : freeze === 'opening' ? 4 : freeze === 'help' ? 5 : freeze === 'setup' ? 0 : (cap ? cap.step : (st >= 11.9 ? 6 : 0));
+    const stepNow = freeze && FREEZE_STEP[freeze] !== undefined ? FREEZE_STEP[freeze] : (cap ? cap.step : (st >= END_AT ? 6 : 0));
     this.steps.style.opacity = introOn || endU > 0.5 ? '0' : '1';
     this.steps.querySelectorAll('.st').forEach(e => { const i = +e.dataset.i; e.classList.toggle('on', i === stepNow); e.classList.toggle('done', i < stepNow); });
     // caption
-    const showCap = !introOn && cap && endU === 0 && !(freeze === 'notbeaten' && fu > 0.1);
+    const showCap = !introOn && cap && endU === 0 && !((freeze === 'notbeaten' || freeze === 'closeout') && fu > 0.1);
     this.cap.style.opacity = showCap ? '1' : '0';
     if (cap) {
       const since = st - cap.from;
@@ -99,7 +112,7 @@ export class Hud {
     const COL = { red: '#ff3347', amber: '#ffb21e', blue: '#2f6bff', green: '#23d56b' };
     TAGS.forEach(([n, text, color, a, b, dx, dy], i) => {
       const e = this.tagEls[i], g = this.lines[i];
-      const on = st >= a && st < b && !introOn && endU === 0;
+      const on = st >= a && st < b && !introOn && endU === 0 && !(freeze && VERDICTS[freeze]);
       if (!on) { e.style.opacity = '0'; g.style.opacity = '0'; return; }
       const hp = headPos(n);
       const p = projFn(new THREE.Vector3(hp.x, hp.y + 0.14, hp.z));

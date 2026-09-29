@@ -80,13 +80,29 @@ export function toTargets(s, pl) {
   return T;
 }
 
-// Blend two target sets (u=0 -> a, u=1 -> b)
-export function blendTargets(a, b, u) {
+// Blend two target sets (u=0 -> a, u=1 -> b) in each pose's own body frame (hip + facing), so a crossfade
+// between differently-facing clips turns the body instead of pulling the limbs through the middle.
+// turnRef: preferred yaw difference (b - a); keeps the turn direction stable across a blend window.
+const _Y = new THREE.Vector3(0, 1, 0);
+export function blendTargets(a, b, u, turnRef = null) {
   if (u <= 0) return a; if (u >= 1) return b;
-  const T = { pos: {}, quat: {} };
-  for (const k of Object.keys(a.pos)) T.pos[k] = a.pos[k].clone().lerp(b.pos[k], u);
-  for (const k of Object.keys(a.quat)) T.quat[k] = a.quat[k].clone().slerp(b.quat[k], u);
-  let d = b.yaw - a.yaw; while (d > Math.PI) d -= 2 * Math.PI; while (d < -Math.PI) d += 2 * Math.PI;
-  T.yaw = a.yaw + d * u;
+  let d = b.yaw - a.yaw;
+  const ref = turnRef ?? 0;
+  while (d - ref > Math.PI) d -= 2 * Math.PI; while (d - ref < -Math.PI) d += 2 * Math.PI;
+  const yaw = a.yaw + d * u;
+  const hipOf = (T) => { const h = T.pos.lhipjoint.clone().add(T.pos.rhipjoint).multiplyScalar(0.5); h.y = 0; return h; };
+  const ha = hipOf(a), hb = hipOf(b), hip = ha.clone().lerp(hb, u);
+  const qa = new THREE.Quaternion().setFromAxisAngle(_Y, -a.yaw), qb = new THREE.Quaternion().setFromAxisAngle(_Y, -b.yaw);
+  const q = new THREE.Quaternion().setFromAxisAngle(_Y, yaw);
+  const T = { pos: {}, quat: {}, yaw };
+  for (const k of Object.keys(a.pos)) {
+    const la = a.pos[k].clone().sub(ha).applyQuaternion(qa), lb = b.pos[k].clone().sub(hb).applyQuaternion(qb);
+    T.pos[k] = la.lerp(lb, u).applyQuaternion(q).add(hip);
+  }
+  for (const k of Object.keys(a.quat)) {
+    const la = qa.clone().multiply(a.quat[k]), lb = qb.clone().multiply(b.quat[k]);
+    T.quat[k] = q.clone().multiply(la.slerp(lb, u));
+  }
+  if (a.planted && b.planted) T.planted = { L: a.planted.L + (b.planted.L - a.planted.L) * u, R: a.planted.R + (b.planted.R - a.planted.R) * u };
   return T;
 }

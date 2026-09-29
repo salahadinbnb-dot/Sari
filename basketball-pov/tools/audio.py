@@ -10,7 +10,9 @@ from scipy import signal
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SR = 48000
 rng = np.random.default_rng(7)
-ev = json.load(open(os.path.join(ROOT, 'out', 'events.json')))
+EVENTS = sys.argv[1] if len(sys.argv) > 1 else os.path.join(ROOT, 'out', 'events.json')
+OUT = sys.argv[2] if len(sys.argv) > 2 else os.path.join(ROOT, 'out', 'audio.wav')
+ev = json.load(open(EVENTS))
 DUR = ev['duration']
 N = int(DUR * SR) + SR // 2
 t_all = np.arange(N) / SR
@@ -93,6 +95,7 @@ for s in ev['score']:
 # freeze muffle: crossfade to a low-passed, quieter crowd while time is stopped
 fz = np.zeros(N)
 for f in ev['freezes']:
+    if f['tag'] == 'end': continue  # the crowd keeps going over the end card
     a, b = f['t'], f['t'] + f['dur']
     fz += np.clip(np.minimum((t_all - a) / 0.12, (b - t_all) / 0.15), 0, 1)
 fz = np.clip(fz, 0, 1)
@@ -185,6 +188,16 @@ def impact_clip():
     return x / np.max(np.abs(x))
 
 
+def board_clip():
+    # glass/backboard kiss: dull wooden thump + short metallic rattle from the rim assembly
+    n = int(0.5 * SR); t = np.arange(n) / SR
+    thump = np.sin(2 * np.pi * (118 + 60 * np.exp(-t / 0.008)) * t) * np.exp(-t / 0.05)
+    body = bp(rng.standard_normal(n), 250, 1100) * np.exp(-t / 0.03) * 0.5
+    rattle = (np.sin(2 * np.pi * 1630 * t) + 0.7 * np.sin(2 * np.pi * 2410 * t)) * np.exp(-t / 0.09) * 0.07
+    x = thump + body + rattle
+    return x / np.max(np.abs(x))
+
+
 def tick_clip():
     n = int(0.09 * SR); t = np.arange(n) / SR
     x = (np.sin(2 * np.pi * 1500 * t) + 0.5 * np.sin(2 * np.pi * 2250 * t)) * np.exp(-t / 0.018)
@@ -199,6 +212,8 @@ for c in ev['catches']:
     place(mix, verb(slap_clip(), 0.2), c['t'], db(-15) * c['gain'], pan=0.0)
 for c in ev['releases']:
     place(mix, whff_clip(), c['t'], db(-26) * c['gain'])
+for b in ev.get('board', []):
+    place(mix, verb(board_clip(), 0.3), b['t'], db(-17) * b.get('gain', 1), pan=-0.05)
 for s in ev['swish']:
     place(mix, verb(swish_clip(), 0.25), s['t'], db(-13), pan=-0.05)
 for s in ev['squeaks']:
@@ -207,6 +222,8 @@ imp = impact_clip()
 for f in ev['freezes']:
     if f['tag'] == 'intro':
         place(mix, imp, 0.02, db(-12))
+        continue
+    if f['tag'] == 'end':
         continue
     wi = sweep_noise(0.32, 350, 3200)
     wi *= np.linspace(0, 1, len(wi)) ** 2
@@ -227,7 +244,7 @@ mix = np.tanh(mix / db(-1.2)) * db(-1.2) if peak > db(-1.2) else mix
 fade = int(0.35 * SR)
 mix[:, -fade:] *= np.linspace(1, 0, fade)
 mix[:, :int(0.01 * SR)] *= np.linspace(0, 1, int(0.01 * SR))
-out = os.path.join(ROOT, 'out', 'audio.wav')
+out = OUT
 with wave.open(out, 'wb') as w:
     w.setnchannels(2); w.setsampwidth(2); w.setframerate(SR)
     w.writeframes((np.clip(mix.T, -1, 1) * 32767).astype(np.int16).tobytes())

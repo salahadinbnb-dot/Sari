@@ -320,10 +320,9 @@ function buildCrowd(scene) {
   section(13, 30, new THREE.Vector3(7.62, 0, 6), -Math.PI / 2, 20, 3.0);
 }
 
-function buildLedBoards(scene) {
+function buildLedBoards(scene, words = ['TEST THE DRIVE', 'CHECKPOINT', 'USE THE SCREEN', 'READ THE HELP', 'HOOPS IQ']) {
   const tex = makeTextTexture(4096, 256, (x, w, h) => {
     const gr = x.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, '#0d1d52'); gr.addColorStop(1, '#07102e'); x.fillStyle = gr; x.fillRect(0, 0, w, h);
-    const words = ['TEST THE DRIVE', 'CHECKPOINT', 'USE THE SCREEN', 'READ THE HELP', 'HOOPS IQ'];
     x.font = '800 118px BC, Arial'; x.textBaseline = 'middle';
     let px = 60, i = 0;
     while (px < w) { const t = words[i++ % words.length]; x.fillStyle = i % 2 ? '#ffffff' : '#f6c343'; x.fillText(t, px, h / 2 + 6); px += x.measureText(t).width + 160; x.fillStyle = '#3d6bff'; x.fillRect(px - 100, h / 2 - 12, 24, 24); }
@@ -335,7 +334,7 @@ function buildLedBoards(scene) {
   back.position.set(0, 0.52, -5.14); scene.add(back);
 }
 
-export function buildArena(renderer, scene) {
+export function buildArena(renderer, scene, opts = {}) {
   scene.background = new THREE.Color(0x07080b);
   scene.fog = new THREE.Fog(0x07080b, 20, 42);
   // floor
@@ -361,7 +360,7 @@ export function buildArena(renderer, scene) {
   buildHoop(scene);
   const net = new Net(scene);
   if (!new URLSearchParams(location.search).has('nocrowd')) buildCrowd(scene);
-  buildLedBoards(scene);
+  buildLedBoards(scene, opts.ledWords);
   return { floor, reflector, net };
 }
 

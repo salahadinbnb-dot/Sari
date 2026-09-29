@@ -327,11 +327,10 @@ export class Rig {
       const pitch = below - src.footRest;
       this.solveLeg(side, { pos: ankle.clone(), yaw: Math.atan2(toe.x, toe.z), pitch: THREE.MathUtils.clamp(pitch, -0.5, 1.3), toeBend: THREE.MathUtils.clamp(pitch, 0, 1) * 0.8, kneePole: pole.normalize() }, rootQ, pelvisQ);
     }
-    // arms: wrist relative to shoulder, rescaled to our arm length; elbow pole from mocap elbow
+    // arms: wrist relative to shoulder, rescaled to our arm length; elbow pole from mocap elbow.
+    // opt.handOverride[side] = {pos, palm?, dir?, pole?, curl?, w?} blends toward an explicit hand target (w = weight).
     for (const side of ['L', 'R']) {
       const s = side.toLowerCase();
-      const ov = opt.handOverride && opt.handOverride[side];
-      if (ov) { this.solveArm(side, ov, chestQ, 0); continue; }
       const sh = T.pos[s + 'clavicle'], el = T.pos[s + 'humerus'], wr = T.pos[s + 'radius'], hd = T.pos[s + 'hand'];
       // our shoulder (after clavicle rest)
       this.keepLocal(`${side}_Clavicle`);
@@ -342,7 +341,18 @@ export class Rig {
       const pole = el.clone().sub(sh); pole.addScaledVector(line, -pole.dot(line));
       const dir = hd.clone().sub(wr).normalize();
       const palm = new THREE.Vector3(0, -1, 0).applyQuaternion(T.quat[s + 'hand']);
-      this.solveArm(side, { pos: wrist, pole: pole.lengthSq() > 1e-6 ? pole.normalize() : new THREE.Vector3(0, -1, 0), palm, dir, curl: opt.curl ?? 0.3 }, chestQ, 0);
+      const nat = { pos: wrist, pole: pole.lengthSq() > 1e-6 ? pole.normalize() : new THREE.Vector3(0, -1, 0), palm, dir, curl: opt.curl ?? 0.3 };
+      const ov = opt.handOverride && opt.handOverride[side];
+      let tgt = nat;
+      if (ov && (ov.w ?? 1) > 0) {
+        const w = Math.min(1, ov.w ?? 1);
+        const mix = (a, b) => { if (!b) return a; const v = a.clone().lerp(b, w); return v.lengthSq() > 1e-8 ? v.normalize() : b.clone(); };
+        tgt = {
+          pos: nat.pos.clone().lerp(ov.pos, w), pole: mix(nat.pole, ov.pole), palm: mix(nat.palm, ov.palm), dir: mix(nat.dir, ov.dir),
+          curl: ov.curl === undefined ? nat.curl : nat.curl + (ov.curl - nat.curl) * w,
+        };
+      }
+      this.solveArm(side, tgt, chestQ, 0);
     }
   }
 

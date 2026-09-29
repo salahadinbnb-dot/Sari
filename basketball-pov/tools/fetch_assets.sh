@@ -29,4 +29,11 @@ PY
 node tools/export_mesh.mjs
 python3 tools/bake.py
 python3 tools/prep_textures.py
+# CMU Graphics Lab motion capture (free for any use) for the v2 1v1: skeletons + the clips play1v1.js uses
+mkdir -p assets/mocap
+for f in 06/06.asf 78/78.asf 124/124.asf 06/06_06.amc 06/06_15.amc 124/124_06.amc \
+         78/78_20.amc 78/78_22.amc 78/78_25.amc 78/78_27.amc 78/78_30.amc 78/78_32.amc 78/78_12.amc; do
+  n=$(basename "$f"); [ -s "assets/mocap/$n" ] || curl -sf -o "assets/mocap/$n" "http://mocap.cs.cmu.edu/subjects/$f"
+done
+python3 tools/mocap.py 06_06 06_15 124_06 78_20 78_22 78_25 78_27 78_30 78_32 78_12
 echo "assets ready"
