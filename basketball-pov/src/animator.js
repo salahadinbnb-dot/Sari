@@ -79,8 +79,8 @@ export class Track {
       let wx, wz, wyaw;
       if (sg.place && sg.place !== 'continue') { wx = sg.place.x; wz = sg.place.z; wyaw = sg.place.yaw; }
       else {
-        // align to the previous segment's pose at this segment's start time
-        const pt = this.segTargets(i - 1, sg.at);
+        // align to what the previous segment is showing at this segment's start time
+        const pt = this.atIndex(i - 1, sg.at);
         const hip = pt.pos.lhipjoint.clone().add(pt.pos.rhipjoint).multiplyScalar(0.5);
         wx = hip.x; wz = hip.z; wyaw = pt.yaw;
       }
@@ -137,13 +137,18 @@ export class Track {
   at(t) {
     let i = 0;
     while (i + 1 < this.segs.length && this.segs[i + 1].at <= t) i++;
+    return this.atIndex(i, t);
+  }
+  // segment i at time t, crossfaded from whatever the previous segment was showing (which may itself still be
+  // mid-crossfade when this one starts, so blends nest instead of restarting from an un-blended pose)
+  atIndex(i, t) {
     const sg = this.segs[i];
     const T = this.segTargets(i, t);
     if (i > 0 && t - sg.at < sg.blend) {
-      const P = this.segTargets(i - 1, t);
+      const P = this.atIndex(i - 1, t);
       const u = smooth((t - sg.at) / sg.blend);
       if (sg._turn === undefined) { // turn direction fixed at the middle of the blend
-        const m = sg.at + sg.blend / 2; let d = this.segTargets(i, m).yaw - this.segTargets(i - 1, m).yaw;
+        const m = sg.at + sg.blend / 2; let d = this.segTargets(i, m).yaw - this.atIndex(i - 1, m).yaw;
         while (d > Math.PI) d -= 2 * Math.PI; while (d < -Math.PI) d += 2 * Math.PI; sg._turn = d;
       }
       const B = blendTargets(P, T, u, sg._turn);

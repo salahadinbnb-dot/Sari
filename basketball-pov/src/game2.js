@@ -197,12 +197,13 @@ export class Game {
   }
   // both hands on the ball: contacts along the palm-to-palm axis
   gripHands(B, t, axisLR) {
-    const out = {};
+    const out = {}, f = this.fwd(t);
+    // fingers forward-up along the ball's side: a body-relative reference (the mocap hand can turn edge-on and flip)
+    const ref = f.clone().multiplyScalar(0.75).addScaledVector(UP, 0.65).normalize();
     for (const [side, sg] of [['L', 1], ['R', -1]]) {
       const n = axisLR.clone().multiplyScalar(sg); // outward normal at this hand's contact
-      const x = this.palm(side, t).x;
-      let dir = x.clone().addScaledVector(n, -x.dot(n));
-      if (dir.lengthSq() < 1e-4) dir = UP.clone().addScaledVector(n, -n.y);
+      let dir = ref.clone().addScaledVector(n, -ref.dot(n));
+      if (dir.lengthSq() < 1e-4) dir = f.clone().addScaledVector(n, -f.dot(n));
       dir.normalize();
       const contact = B.clone().addScaledVector(n, BALL_R + 0.004);
       out[side] = { pos: contact.addScaledVector(dir, -0.085).addScaledVector(n, 0.018), palm: n.clone().negate(), dir, curl: 0.38, nrm: n };
@@ -221,9 +222,13 @@ export class Game {
     const anch = R.clone().addScaledVector(ax, BALL_R + 0.022);
     const B = mid.lerp(anch, rightAnchored);
     const hip = this.tab('hip', t), f = this.fwd(t);
-    // triple threat: ball on the right hip until the ball fake
-    const tt = 1 - smooth((t - PLAN.tripleThreatEnd[0]) / (PLAN.tripleThreatEnd[1] - PLAN.tripleThreatEnd[0]));
-    if (tt > 0) B.addScaledVector(V(-f.z, 0, f.x), 0.2 * tt).addScaledVector(f, 0.04 * tt).addScaledVector(UP, -0.03 * tt);
+    // triple threat on the right hip, and the ball fake shown on the right: both stay visible from the camera
+    // behind his right shoulder (the performer held the ball centre-left)
+    if (t < PLAN.releases[0]) {
+      const side = 0.3 + 0.16 * smooth((t - PLAN.tripleThreatEnd[0]) / (PLAN.tripleThreatEnd[1] - PLAN.tripleThreatEnd[0]));
+      B.addScaledVector(V(-f.z, 0, f.x), side).addScaledVector(UP, -0.04 * (1 - smooth((t - 2.3) / 0.2)));
+      const over = B.y - (hip.y + 0.3); if (over > 0) B.y -= over * 0.55; // keep the fake at chest height, out of his face
+    }
     const ahead = B.clone().sub(hip).dot(f), low = 1 - smooth((B.y - hip.y - 0.3) / 0.25); // only below the chest
     if (ahead < 0.27) B.addScaledVector(f, (0.27 - ahead) * low);
     if (ahead > 0.36 && t < PLAN.releases[0]) B.addScaledVector(f, -(ahead - 0.36) * 0.85); // keep the ball fake out of his face

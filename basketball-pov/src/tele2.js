@@ -76,8 +76,8 @@ export function buildTele2(O, hud, fr, st, game, proj) {
       const g = smooth((fu - 0.38) / 0.15);
       if (g > 0) {
         O.ribbon(path('you', 5.95, 7.3), { color: C.blue, width: 0.22, progress: g, opacity: 0.95 });
-        const m = P('you', 7.0);
-        label('go', 'GO WHILE HE’S MOVING', V(m.x + 1.25, m.z + 0.3), g);
+        const m = P('you', 7.3);
+        label('go', 'GO WHILE HE’S MOVING', V(m.x - 0.1, m.z - 0.6), g);
       }
     } else if (!fz && st >= 5.9 && st < 6.95) {
       O.ribbon(path('you', 5.95, 7.3), { color: C.blue, width: 0.2, progress: smooth((st - 5.95) / 0.45), opacity: 0.85 * win(st, 5.9, 6.95, 0.05, 0.2) });

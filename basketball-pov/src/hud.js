@@ -87,7 +87,7 @@ export class Hud {
     const showCap = !introOn && cap && endU === 0 && !((freeze === 'notbeaten' || freeze === 'closeout') && fu > 0.1);
     this.cap.style.opacity = showCap ? '1' : '0';
     if (cap) {
-      const since = st - cap.from;
+      const since = st - cap.from + (freeze ? fu * (fr.fdur || 0) : 0); // text still fades in when a freeze lands on the caption's start
       this.cap.querySelector('.badge span').textContent = cap.step ? `STEP ${cap.step}` : 'SETUP';
       this.cap.querySelector('.title').textContent = cap.title;
       this.cap.querySelector('.text').innerHTML = cap.text;
