@@ -8,8 +8,8 @@ export const CAPTIONS = [
   { from: 4.3, to: 5.47, step: 2, title: 'TEST THE RIGHT SIDE', text: 'Dribble into the <b>space beside him</b> — not into his chest.' },
   { from: 5.47, to: 7.12, step: 3, title: 'CHECKPOINT', text: '2 dribbles, no ground gained → <b>back out</b>, ball alive.' },
   { from: 7.12, to: 8.6, step: 4, title: 'GET A SCREEN', text: 'Don’t go until your screener is <b>set</b>.' },
-  { from: 8.6, to: 9.5, step: 4, title: 'USE THE SCREEN', text: '<b>Shoulder to shoulder</b> — a wide loop lets him slide through.' },
-  { from: 9.5, to: 9.99, step: 5, title: 'READ THE HELP', text: 'Find the next defender <b>before</b> you gather.' },
+  { from: 8.6, to: 9.51, step: 4, title: 'USE THE SCREEN', text: '<b>Shoulder to shoulder</b> — a wide loop lets him slide through.' },
+  { from: 9.51, to: 9.99, step: 5, title: 'READ THE HELP', text: 'Find the next defender <b>before</b> you gather.' },
   { from: 9.99, to: 11.9, step: 5, title: 'READ THE HELP', text: 'He stepped up → <b>hit the man he left</b>.' },
 ];
 

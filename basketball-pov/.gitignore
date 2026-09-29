@@ -5,5 +5,5 @@ frames/
 tools/__pycache__/
 out/*.wav
 out/preview*.mp4
-out/*_silent.mp4
+out/*_silent*.mp4
 out/events.json
