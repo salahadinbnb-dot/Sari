@@ -1,0 +1,16 @@
+{
+  "name": "basketball-pov",
+  "version": "1.0.0",
+  "description": "2K-style behind-the-player POV breakdown of one possession vs a square defender (three.js, rendered headless to MP4).",
+  "scripts": {
+    "assets": "bash tools/fetch_assets.sh",
+    "render": "node tools/events.mjs && python3 tools/audio.py && node tools/render.mjs --out out/ball_screen_pov_silent.mp4 --workers 3 && bash tools/mux.sh",
+    "preview": "node tools/render.mjs --out out/preview.mp4 --q half --workers 3 --size 960x540"
+  },
+  "license": "ISC",
+  "dependencies": {
+    "three": "^0.186.1"
+  },
+  "type": "module",
+  "private": true
+}
