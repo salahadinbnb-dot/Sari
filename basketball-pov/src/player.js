@@ -280,4 +280,70 @@ export class Rig {
     }
   }
   wrist(s) { return this.P[`${s}_Hand`]; }
+
+  // Drive the rig from retargeted mocap targets (world space). T: {pos:{joint:Vector3}, quat:{bone:Quaternion}, yaw}
+  // opt: { handOverride: {L,R} (hand targets to use instead of mocap), look: Vector3|null, lookW: 0..1, curl }
+  applyMocap(T, src, opt = {}) {
+    const root = this.root, k = this.k;
+    const hip = T.pos.lhipjoint.clone().add(T.pos.rhipjoint).multiplyScalar(0.5);
+    root.position.set(hip.x, 0, hip.z);
+    root.quaternion.setFromAxisAngle(Y, T.yaw);
+    root.updateMatrix(); root.updateMatrixWorld(false);
+    const rootQ = root.quaternion.clone();
+    this.W.__root = rootQ; this.P.__root = root.position.clone();
+    // pelvis
+    const qRoot = T.quat.root.clone().multiply(this.restModel.Root);
+    const rb = this.b.Root;
+    rb.position.copy(hip.clone().sub(root.position).applyQuaternion(rootQ.clone().invert()).multiplyScalar(1 / k));
+    rb.quaternion.copy(rootQ.clone().invert().multiply(qRoot));
+    this.W.Root = qRoot; this.P.Root = hip.clone();
+    this.keepLocal('Pelvis'); this.keepLocal('Spine');
+    // spine chain from source rotations
+    this.setWorld('Spine1', this.follow('Spine1', T.quat.lowerback.clone().slerp(T.quat.thorax, 0.35)));
+    this.setWorld('Spine2', this.follow('Spine2', T.quat.thorax));
+    this.setWorld('Neck', this.follow('Neck', T.quat.thorax.clone().slerp(T.quat.upperneck, 0.5)));
+    let headQ = T.quat.head.clone();
+    if (opt.look && opt.lookW > 0) {
+      const hp = this.P.Neck.clone().add(new THREE.Vector3(0, 0.12, 0));
+      const d = opt.look.clone().sub(hp).normalize();
+      const want = new THREE.Quaternion().setFromEuler(new THREE.Euler(-Math.asin(THREE.MathUtils.clamp(d.y, -0.9, 0.9)) * 0.8, Math.atan2(d.x, d.z), 0, 'YXZ'));
+      headQ.slerp(want, opt.lookW);
+    }
+    this.setWorld('Head', this.follow('Head', headQ));
+    for (const n of Object.keys(this.b)) {
+      if (this.b[n].parent === this.b.Head || (this.b[n].parent && this.b[n].parent.parent === this.b.Head)) this.b[n].quaternion.copy(this.restLocal[n]);
+    }
+    const pelvisQ = T.quat.root.clone();
+    const chestQ = this.W.Neck.clone().multiply(this.restModel.Neck.clone().invert());
+    // legs: ankles from mocap, knee pole from mocap knee
+    for (const side of ['L', 'R']) {
+      const s = side.toLowerCase();
+      const hipJ = T.pos[s + 'hipjoint'], knee = T.pos[s + 'femur'], ankle = T.pos[s + 'tibia'], ball = T.pos[s + 'foot'];
+      const line = ankle.clone().sub(hipJ).normalize();
+      const pole = knee.clone().sub(hipJ); pole.addScaledVector(line, -pole.dot(line));
+      const toe = ball.clone().sub(ankle);
+      const horiz = Math.hypot(toe.x, toe.z);
+      const below = Math.atan2(-toe.y, horiz);
+      const pitch = below - src.footRest;
+      this.solveLeg(side, { pos: ankle.clone(), yaw: Math.atan2(toe.x, toe.z), pitch: THREE.MathUtils.clamp(pitch, -0.5, 1.3), toeBend: THREE.MathUtils.clamp(pitch, 0, 1) * 0.8, kneePole: pole.normalize() }, rootQ, pelvisQ);
+    }
+    // arms: wrist relative to shoulder, rescaled to our arm length; elbow pole from mocap elbow
+    for (const side of ['L', 'R']) {
+      const s = side.toLowerCase();
+      const ov = opt.handOverride && opt.handOverride[side];
+      if (ov) { this.solveArm(side, ov, chestQ, 0); continue; }
+      const sh = T.pos[s + 'clavicle'], el = T.pos[s + 'humerus'], wr = T.pos[s + 'radius'], hd = T.pos[s + 'hand'];
+      // our shoulder (after clavicle rest)
+      this.keepLocal(`${side}_Clavicle`);
+      const S = this.P[`${side}_Clavicle`].clone().add(this.b[`${side}_UpperArm`].position.clone().multiplyScalar(k).applyQuaternion(this.W[`${side}_Clavicle`]));
+      const ratio = (this.len.upper + this.len.fore) / (src.armLen * src.scale);
+      const wrist = S.clone().add(wr.clone().sub(sh).multiplyScalar(ratio));
+      const line = wr.clone().sub(sh).normalize();
+      const pole = el.clone().sub(sh); pole.addScaledVector(line, -pole.dot(line));
+      const dir = hd.clone().sub(wr).normalize();
+      const palm = new THREE.Vector3(0, -1, 0).applyQuaternion(T.quat[s + 'hand']);
+      this.solveArm(side, { pos: wrist, pole: pole.lengthSq() > 1e-6 ? pole.normalize() : new THREE.Vector3(0, -1, 0), palm, dir, curl: opt.curl ?? 0.3 }, chestQ, 0);
+    }
+  }
+
 }
