@@ -1,9 +1,34 @@
-# Behind-the-player POV breakdowns
+# 2K-style basketball clips
 
-2K-style breakdowns of one possession against a defender who's already square, shot from behind the ball handler.
+2K-style gameplay clips and breakdowns, rendered from three.js and driven by real motion capture.
 
-- **v2 (current): 1-on-1, real motion capture.** [`out/1v1_pov.mp4`](out/1v1_pov.mp4) (1920×1080, 60 fps, H.264 + AAC)
+- **v3 (latest): tweener, cross, cross, step-back three, from the side.** [`out/tweener.mp4`](out/tweener.mp4) (1920×1080, 60 fps, H.264 + AAC)
+- v2: 1-on-1 against a square defender, shot from behind the ball handler. [`out/1v1_pov.mp4`](out/1v1_pov.mp4) (1920×1080, 60 fps, H.264 + AAC)
 - v1: ball-screen version with procedural animation. [`out/ball_screen_pov.mp4`](out/ball_screen_pov.mp4) (1080p, 30 fps)
+
+## v3: what it shows
+
+A right-wing isolation with the clock running out and your team down two.
+
+| Beat | On screen |
+|---|---|
+| Size-up | You walk it in with the left hand. He's in his stance, an arm's length off. |
+| Between the legs | Left to right through the legs. He slides with it. |
+| Cross | Right to left. He slides with that too and stays in front. |
+| Cross + step-back | Back to the right. He's still going the other way, and you step back into the space. |
+| Pull-up | The camera swings square to the shot. He plants and sprints at you, about 2 m away and still coming when it leaves your hand. The meter hits green. |
+| Buzzer | The horn goes with the ball in the air. Swish, 100–99, **GAME WINNER**. |
+
+## How v3 is made
+
+- **Moves:** `src/play3.js` sequences the mocap clips.
+  - You: a left-hand dribble walk (06_04), then a free-style dribbling take (06_13). Its between-the-legs, two crosses and step-back were found with `tools/moves.py` and `tools/pushes.py`. Then a dribble pull-up (06_15), then a stand and back-off after the shot (124_05).
+  - Him: a stance (78_30), a zig-zag slide (78_28) fitted to your moves with `tools/fitd1.mjs`, a sprint closeout (78_27), then a live stance while the ball is in the air (78_22).
+  - `tools/geom3.mjs` prints the spacing, bearing and facing over time.
+- **Ball:** `src/game3.js`. The dribble follows the captured hands. Every push is detected from the hand's downward speed, and the ball rides under the palm while in contact. Between pushes it's ballistic, and the tweener bounce lands between the ankles. The release goes where the shooter faced at the gather, with backspin on the way to the rim.
+- **Camera:** `src/camera3.js`. A sideline camera that's a quarter behind the ball handler for the dribble moves. It swings square to the shot line for the step-back and the shot, so the separation opens across the screen, then widens to hold the shooter, the arc and the rim.
+- **HUD:** `src/hud3.js`. The scorebug with a running clock, move callouts, the shot meter, the separation readout and the end banner.
+- **Audio:** the same synth as v2, plus the game horn and a crowd build while the shot is in the air.
 
 ## v2: what it shows
 
@@ -39,14 +64,18 @@
 npm install
 pip install pillow numpy scipy imageio-ffmpeg
 npm run assets      # Rocketbox models + uniforms, CMU mocap clips
+npm run preview:v3  # quick 540p check of v3
+npm run render:v3   # final 1080p60 v3 with audio -> out/tweener.mp4
 npm run preview     # quick 540p check of v2
-npm run render      # final 1080p60 video with audio -> out/1v1_pov.mp4
+npm run render      # final 1080p60 v2 with audio -> out/1v1_pov.mp4
 npm run render:v1   # the original ball-screen version
 ```
 
 Useful dev tools:
 
-- `PAGE=src/index2.html node tools/still.mjs <prefix> <frame...>` renders single frames.
+- `PAGE=src/index3.html node tools/still.mjs <prefix> <frame...>` renders single frames (any page).
+- `node tools/geom3.mjs [step] [end]` prints v3 spacing, and `node tools/fitd1.mjs` re-fits the defender's slide.
+- `python3 tools/moves.py <clip>` lists the hand switches (tweener, crossover, behind-the-back) in a dribbling clip.
 - `node tools/clipview.mjs <clip> <prefix> <viewDeg>` renders a contact sheet of any mocap clip on our player.
 - `python3 tools/clipinfo.py <clip>` prints a clip's speed, direction and hand-height timeline.
 

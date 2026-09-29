@@ -98,3 +98,34 @@ html, body { margin: 0; padding: 0; background: #000; overflow: hidden; }
 .endcard .sub { margin-top: 18px; display: inline-block; font-family: 'B'; font-weight: 700; font-size: 36px; color: #fff; background: rgba(7,11,22,0.82); padding: 12px 26px; }
 .flabel.go { color: #121212; background: var(--amber); padding: 3px 14px; font-size: 30px; }
 .flabel.finish { color: #06140b; background: #2ee57a; padding: 3px 12px; font-size: 28px; }
+
+/* ---------- v3 (tweener) ---------- */
+.bug3 { position: absolute; left: 50%; bottom: 40px; transform: translateX(-50%) skewX(-8deg); display: flex; height: 58px; font-family: 'BC'; font-weight: 800; box-shadow: 0 8px 28px rgba(0,0,0,0.5); }
+.bug3 > div { display: flex; align-items: center; background: var(--panel); padding: 0 18px; gap: 12px; }
+.bug3 .tm { min-width: 170px; }
+.bug3 .bar { width: 8px; height: 58px; }
+.bug3 .home .bar { background: var(--royal); margin-left: -18px; }
+.bug3 .away .bar { background: var(--red); margin-right: -18px; }
+.bug3 .ab { font-size: 28px; letter-spacing: 1.5px; color: #e9edf5; }
+.bug3 .sc { font-size: 40px; font-variant-numeric: tabular-nums; }
+.bug3 .home .sc { margin-left: auto; }
+.bug3 .away .sc { margin-right: auto; }
+.bug3 .mid { background: rgba(3,6,14,0.92) !important; font-size: 28px; min-width: 170px; justify-content: center; }
+.bug3 .mid .q { color: #9fb2d8; }
+.bug3 .mid .clk { font-variant-numeric: tabular-nums; }
+.bug3 .mid .clk.zero { color: #ff4a5c; }
+.bug3 .shot { background: #f6c343 !important; color: #111; font-size: 32px; min-width: 44px; justify-content: center; }
+.bug3.scored .home { background: rgba(47,107,255,0.9); }
+.call { position: absolute; transform: translate(-50%,-50%); opacity: 0; white-space: nowrap; }
+.call span { display: block; font-family: 'BC'; font-weight: 900; font-style: italic; font-size: 40px; letter-spacing: 1px; color: #fff; text-shadow: 0 3px 0 rgba(0,0,0,0.55), 0 0 18px rgba(47,107,255,0.55); padding: 0 8px; border-bottom: 4px solid var(--royal); }
+.meter3 { position: absolute; width: 20px; height: 150px; transform: translate(-50%,-50%); background: rgba(7,11,22,0.75); border: 3px solid rgba(255,255,255,0.9); border-radius: 4px; opacity: 0; overflow: hidden; }
+.meter3 .fill { position: absolute; left: 0; right: 0; bottom: 0; height: 0; background: linear-gradient(#fff, #cfd8ff); }
+.meter3 .tick { position: absolute; left: -2px; right: -2px; top: 6%; height: 4px; background: #2ee57a; }
+.meter3.green { border-color: #2ee57a; box-shadow: 0 0 22px rgba(46,229,122,0.9); }
+.meter3.green .fill { background: #2ee57a; }
+.meterTxt { position: absolute; transform: translate(-50%,-50%) skewX(-10deg); font-family: 'BC'; font-weight: 900; font-style: italic; font-size: 38px; color: #2ee57a; text-shadow: 0 3px 0 rgba(0,40,15,0.7), 0 0 20px rgba(46,229,122,0.7); opacity: 0; white-space: nowrap; }
+.sep3 { position: absolute; transform: translate(-50%,-50%); opacity: 0; white-space: nowrap; font-family: 'BC'; font-weight: 800; font-size: 26px; letter-spacing: 2px; color: #fff; background: rgba(7,11,22,0.82); padding: 4px 14px; border-left: 5px solid var(--amber); }
+.sep3 b { color: var(--amber); font-size: 30px; margin-right: 6px; }
+.banner3 { position: absolute; left: 50%; top: 230px; text-align: center; opacity: 0; transform: translate(-50%,0); }
+.banner3 .big { font-family: 'BC'; font-weight: 900; font-style: italic; font-size: 132px; line-height: 1; color: #fff; text-shadow: 0 6px 0 rgba(20,40,120,0.8), 0 0 40px rgba(47,107,255,0.6); letter-spacing: 3px; }
+.banner3 .sub { display: inline-block; margin-top: 14px; font-family: 'B'; font-weight: 700; font-size: 32px; color: #fff; background: rgba(7,11,22,0.82); padding: 8px 22px; border-bottom: 5px solid var(--royal); }

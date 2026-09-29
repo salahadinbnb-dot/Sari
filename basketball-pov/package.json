@@ -1,9 +1,11 @@
 {
   "name": "basketball-pov",
   "version": "1.0.0",
-  "description": "2K-style behind-the-player POV breakdowns (three.js, rendered headless to MP4): v2 is a 1v1 vs a square defender driven by real motion capture.",
+  "description": "2K-style basketball clips (three.js, rendered headless to MP4) driven by real motion capture: v3 is a tweener-cross-cross step-back three from the side; v2 is a behind-the-player 1v1 breakdown.",
   "scripts": {
     "assets": "bash tools/fetch_assets.sh",
+    "render:v3": "node tools/events2.mjs src/index3.html out/events3.json && python3 tools/audio.py out/events3.json out/audio3.wav && node tools/render.mjs --page src/index3.html --out out/tweener_silent.mp4 --workers 3 && bash tools/mux.sh out/tweener_silent.mp4 out/audio3.wav out/tweener.mp4",
+    "preview:v3": "node tools/render.mjs --page src/index3.html --out out/preview_v3.mp4 --q half --workers 3 --size 960x540 --step 2",
     "render": "node tools/events2.mjs && python3 tools/audio.py out/events2.json out/audio2.wav && node tools/render.mjs --page src/index2.html --out out/1v1_pov_silent.mp4 --workers 3 && bash tools/mux.sh out/1v1_pov_silent.mp4 out/audio2.wav out/1v1_pov.mp4",
     "preview": "node tools/render.mjs --page src/index2.html --out out/preview_v2.mp4 --q half --workers 3 --size 960x540 --step 2",
     "render:v1": "node tools/events.mjs && python3 tools/audio.py && node tools/render.mjs --out out/ball_screen_pov_silent.mp4 --workers 3 && bash tools/mux.sh"

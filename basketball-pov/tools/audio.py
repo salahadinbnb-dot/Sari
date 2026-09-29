@@ -92,6 +92,10 @@ swell = np.zeros(N)
 for s in ev['score']:
     tt = t_all - s['t']
     swell += np.where(tt > 0, (1 - np.exp(-tt / 0.18)) * np.exp(-np.maximum(tt - 0.6, 0) / 2.6), 0)
+# rising anticipation while a long shot is in the air (pages that export it)
+for a in ev.get('anticipation', []):
+    u = np.clip((t_all - a['t0']) / max(a['t1'] - a['t0'], 1e-3), 0, 1)
+    swell += np.where(t_all < a['t1'] + 0.3, u ** 2 * 0.35, 0) * np.clip((a['t1'] + 0.3 - t_all) / 0.3, 0, 1)
 # freeze muffle: crossfade to a low-passed, quieter crowd while time is stopped
 fz = np.zeros(N)
 for f in ev['freezes']:
@@ -198,6 +202,20 @@ def board_clip():
     return x / np.max(np.abs(x))
 
 
+def buzzer_clip(dur=1.15):
+    # arena game horn: detuned square-ish tone (odd harmonics) with a hard start/stop
+    n = int((dur + 0.1) * SR); t = np.arange(n) / SR
+    x = np.zeros(n)
+    for det in (0.996, 1.0, 1.004):
+        f0 = 247 * det
+        for h in range(1, 24, 2):
+            if f0 * h > 9000: break
+            x += np.sin(2 * np.pi * f0 * h * t + rng.uniform(0, 2 * np.pi)) / h
+    e = np.minimum(t / 0.012, 1) * np.clip((dur - t) / 0.05, 0, 1)
+    x = lp(hp(x * e, 150), 5200)
+    return x / np.max(np.abs(x))
+
+
 def tick_clip():
     n = int(0.09 * SR); t = np.arange(n) / SR
     x = (np.sin(2 * np.pi * 1500 * t) + 0.5 * np.sin(2 * np.pi * 2250 * t)) * np.exp(-t / 0.018)
@@ -232,6 +250,8 @@ for f in ev['freezes']:
     wo = sweep_noise(0.26, 3000, 380)
     wo *= np.linspace(1, 0, len(wo)) ** 1.5
     place(mix, wo, f['t'] + f['dur'] - 0.04, db(-21))
+for b in ev.get('buzzer', []):
+    place(mix, verb(buzzer_clip(), 0.45), b['t'], db(-15))
 for s in ev['steps']:
     place(mix, tick_clip(), s['t'], db(-28))
 

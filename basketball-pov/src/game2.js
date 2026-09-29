@@ -24,7 +24,7 @@ const herm1 = (p0, v0, p1, v1, T, s) => {
   return (2 * s3 - 3 * s2 + 1) * p0 + (s3 - 2 * s2 + s) * T * v0 + (-2 * s3 + 3 * s2) * p1 + (s3 - s2) * T * v1;
 };
 // ballistic point between p0 (t0) and p1 (t1): linear in xz, gravity in y
-function ballistic(p0, p1, t0, t1, t) {
+export function ballistic(p0, p1, t0, t1, t) {
   const T = Math.max(t1 - t0, 1e-3), tau = clamp(t - t0, 0, T), u = tau / T;
   const vy0 = (p1.y - p0.y + 0.5 * G * T * T) / T;
   return V(p0.x + (p1.x - p0.x) * u, p0.y + vy0 * tau - 0.5 * G * tau * tau, p0.z + (p1.z - p0.z) * u);
@@ -48,7 +48,7 @@ PLAN.board = PLAN.release + 0.26; PLAN.rim = PLAN.board + 0.22; PLAN.netEnd = PL
 // Foot-skate cleanup: while a foot is planted (per the source clip), hold it where it touched down; after lift-off
 // the accumulated offset eases out during the swing. The hold is released (the foot slips) only when keeping it
 // would stretch the leg past ~96% of its length, or drift further than maxOff.
-function footLock(samples, legLen, maxOff = 0.45, release = 0.14) {
+export function footLock(samples, legLen, maxOff = 0.45, release = 0.14) {
   const n = samples.length, off = new Array(n);
   let anchor = null, last = V(), rel = -1e9;
   const reachOK = (o, s) => V(s.a.x + o.x, s.a.y, s.a.z + o.z).distanceTo(s.h) <= legLen * 0.965;
