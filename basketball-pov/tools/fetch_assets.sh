@@ -37,4 +37,13 @@ for f in 06/06.asf 78/78.asf 124/124.asf 06/06_06.amc 06/06_15.amc 124/124_06.am
   n=$(basename "$f"); [ -s "assets/mocap/$n" ] || curl -sf -o "assets/mocap/$n" "http://mocap.cs.cmu.edu/subjects/$f"
 done
 python3 tools/mocap.py 06_06 06_15 124_06 78_20 78_22 78_25 78_27 78_30 78_32 78_12 06_04 06_13 124_05 78_28
+# Anatomical bone meshes for v4: the OpenSim full-body model (Rajagopal et al. 2016) from opensim-org/opensim-models,
+# posed and exported by tools/bones.py (needs: pip install trimesh networkx scipy)
+if [ ! -s assets/bones/bones.bin ]; then
+  OSM=$(mktemp -d)
+  git clone -q --depth 1 --filter=blob:none --sparse https://github.com/opensim-org/opensim-models "$OSM/opensim-models"
+  (cd "$OSM/opensim-models" && git sparse-checkout set Geometry Models/Rajagopal)
+  python3 tools/bones.py "$OSM/opensim-models" assets/bones
+  rm -rf "$OSM"
+fi
 echo "assets ready"

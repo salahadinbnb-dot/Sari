@@ -11,6 +11,7 @@ import { SideCam } from './camera3.js';
 import { Hud3 } from './hud3.js';
 import { makeIndicator } from './overlays.js';
 import { makeSkeleton } from './skeleton.js';
+import { loadBones, makeBoneSkeleton, makeShoes } from './boneskel.js';
 
 const W = 1920, H = 1080;
 const q = new URLSearchParams(location.search);
@@ -43,6 +44,13 @@ async function init() {
   const players = {};
   for (const [name, s] of Object.entries(SPECS)) { const { root, k } = makePlayerMesh(T, s); scene.add(root); players[name] = { root, rig: new Rig(root, k), spec: s }; }
   if (SKEL) for (const [name, p] of Object.entries(players)) { p.root.traverse(o => { if (o.isMesh) o.visible = false; }); p.skel = makeSkeleton(scene, SKEL_STYLE[name]); }
+  if (q.has('bones')) {
+    const bones = await loadBones('../assets/bones');
+    for (const p of Object.values(players)) {
+      let m = null; p.root.traverse(o => { if (o.isSkinnedMesh && !m) m = o; });
+      p.bones = makeBoneSkeleton(bones, m, { feet: false }); p.shoes = makeShoes(m); m.visible = false;
+    }
+  }
   const clips = {}; for (const c of CLIPS3) clips[c] = await loadClip(c);
   const legOf = (r) => r.len.thigh + r.len.calf;
   const tracks = buildTracks3(clips, { you: legOf(players.you.rig), d1: legOf(players.d1.rig) });

@@ -17,11 +17,11 @@ export function rng(seed) {
 }
 
 // Floor canvas covers x in [-FX, FX], z in [Z0, Z0 + 2*FX]
-const FX = 11, Z0 = -5.5, FSIZE = 22, TEX = 4096;
+export const FX = 11, Z0 = -5.5, FSIZE = 22, TEX = 4096;
 const PX = TEX / FSIZE;
 const toPx = (x, z) => [(x + FX) * PX, (z - Z0) * PX];
 
-function woodCanvas() {
+export function woodCanvas() {
   const c = document.createElement('canvas'); c.width = c.height = TEX;
   const g = c.getContext('2d');
   const R = rng(7);
@@ -111,12 +111,12 @@ function paintCourt(g) {
   const t = toPx(0, C.baselineZ - 0.75); g.translate(t[0], t[1]); g.fillText('R E A D   T H E   D E F E N S E', 0, 0.16 * PX); g.restore();
 }
 
-function floorMaterial(tex, reflector) {
+export function floorMaterial(tex, reflector, o = {}) {
   const mat = new THREE.MeshStandardMaterial({ map: tex, roughness: 0.32, metalness: 0.0, envMapIntensity: 0.35 });
   mat.onBeforeCompile = (sh) => {
     sh.uniforms.tReflect = { value: reflector.getRenderTarget().texture };
     sh.uniforms.reflectMatrix = { value: reflector.textureMatrixRef };
-    sh.uniforms.reflectStrength = { value: 0.34 };
+    sh.uniforms.reflectStrength = { value: o.strength ?? 0.34 };
     sh.vertexShader = sh.vertexShader
       .replace('#include <common>', '#include <common>\nuniform mat4 reflectMatrix;\nvarying vec4 vReflUv;')
       .replace('#include <begin_vertex>', '#include <begin_vertex>\nvReflUv = reflectMatrix * vec4(position, 1.0);');
@@ -125,7 +125,7 @@ function floorMaterial(tex, reflector) {
       .replace('#include <opaque_fragment>', `
         vec2 ruv = vReflUv.xy / vReflUv.w;
         vec3 refl = vec3(0.0);
-        float bl = 0.0045;
+        float bl = ${(o.blur ?? 0.0045).toFixed(4)};
         refl += texture2D(tReflect, ruv).rgb * 0.28;
         refl += texture2D(tReflect, ruv + vec2(bl, 0.0)).rgb * 0.12;
         refl += texture2D(tReflect, ruv - vec2(bl, 0.0)).rgb * 0.12;
@@ -135,6 +135,7 @@ function floorMaterial(tex, reflector) {
         refl += texture2D(tReflect, ruv - vec2(bl, bl) * 1.7).rgb * 0.06;
         refl += texture2D(tReflect, ruv + vec2(bl, -bl) * 1.7).rgb * 0.06;
         refl += texture2D(tReflect, ruv - vec2(bl, -bl) * 1.7).rgb * 0.06;
+        refl = min(refl, vec3(${(o.clamp ?? 1000).toFixed(2)}));
         vec3 vdir = normalize(vViewPosition);
         float fres = 0.55 + 0.45 * pow(1.0 - abs(dot(normalize(normal), -vdir)), 3.0);
         outgoingLight = outgoingLight * (1.0 - 0.18 * fres * reflectStrength) + refl * reflectStrength * fres;
@@ -143,7 +144,7 @@ function floorMaterial(tex, reflector) {
   return mat;
 }
 
-function makeTextTexture(w, h, draw) {
+export function makeTextTexture(w, h, draw) {
   const c = document.createElement('canvas'); c.width = w; c.height = h;
   draw(c.getContext('2d'), w, h);
   const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8;

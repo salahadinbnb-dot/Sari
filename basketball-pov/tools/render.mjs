@@ -1,5 +1,6 @@
 // Render the timeline to H.264 MP4 using N parallel headless browsers.
 // usage: node tools/render.mjs --out out/file.mp4 [--page src/index2.html] [--q half] [--workers 3] [--from 0] [--to N] [--size 1920x1080] [--step 1]
+//        [--viewport 1080x1920] (page size; defaults to 1920x1080)
 import { startServer, openPage, ROOT } from './harness.mjs';
 import { spawn, execFileSync } from 'node:child_process';
 import fs from 'node:fs';
@@ -12,12 +13,13 @@ const PAGE = args.page || 'src/index.html';
 const workers = +(args.workers || 3);
 const size = (args.size || '1920x1080').split('x').map(Number);
 const step = +(args.step || 1);
+const [vw, vh] = (args.viewport || '1920x1080').split('x').map(Number);
 const FF = execFileSync('python3', ['-c', 'import imageio_ffmpeg;print(imageio_ffmpeg.get_ffmpeg_exe())']).toString().trim();
 const tmpDir = path.join(ROOT, 'frames'); fs.mkdirSync(tmpDir, { recursive: true });
 
 const server = await startServer();
 // find frame count
-const probe = await openPage(server, PAGE, q);
+const probe = await openPage(server, PAGE, q, { width: vw, height: vh });
 const total = await probe.page.evaluate(() => window.__frames);
 const fps = await probe.page.evaluate(() => window.__fps || 30);
 await probe.browser.close();
@@ -34,7 +36,7 @@ await Promise.all(Array.from({ length: workers }, async (_, w) => {
   const part = path.join(tmpDir, `part_${w}.mp4`); parts[w] = part;
   const ff = spawn(FF, ['-y', '-loglevel', 'error', '-f', 'image2pipe', '-framerate', String(fps / step), '-c:v', 'mjpeg', '-i', '-',
     '-vf', `scale=${size[0]}:${size[1]}:flags=lanczos`, '-c:v', 'libx264', '-preset', 'slow', '-crf', '17', '-pix_fmt', 'yuv420p', part], { stdio: ['pipe', 'inherit', 'inherit'] });
-  const { browser, page } = await openPage(server, PAGE, q);
+  const { browser, page } = await openPage(server, PAGE, q, { width: vw, height: vh });
   for (const i of mine) {
     await page.evaluate(i => window.renderFrame(i), i);
     const buf = await page.screenshot({ type: 'jpeg', quality: 94 });

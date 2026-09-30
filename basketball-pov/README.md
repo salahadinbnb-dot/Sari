@@ -2,10 +2,34 @@
 
 2K-style gameplay clips and breakdowns, rendered from three.js and driven by real motion capture.
 
-- **v3 (latest): tweener, cross, cross, step-back three, from the side.** [`out/tweener.mp4`](out/tweener.mp4) (1920×1080, 60 fps, H.264 + AAC)
+- **v4 (latest): skeletons hooping in a practice gym, shot like a phone clip.** [`out/skeleton_gym.mp4`](out/skeleton_gym.mp4) (1080×1920 portrait, 30 fps, H.264 + AAC)
+- v3: tweener, cross, cross, step-back three, from the side. [`out/tweener.mp4`](out/tweener.mp4) (1920×1080, 60 fps, H.264 + AAC)
   - Skeleton version: [`out/tweener_skeleton.mp4`](out/tweener_skeleton.mp4). It's the same play and motion, with the players drawn as their skeletons instead of the 3D models (`src/index3.html?skel`).
 - v2: 1-on-1 against a square defender, shot from behind the ball handler. [`out/1v1_pov.mp4`](out/1v1_pov.mp4) (1920×1080, 60 fps, H.264 + AAC)
 - v1: ball-screen version with procedural animation. [`out/ball_screen_pov.mp4`](out/ball_screen_pov.mp4) (1080p, 30 fps)
+
+## v4: what it shows
+
+The same play as v3 (between the legs, cross, cross, step-back three over a defender who slides with every move and
+still loses), played by two anatomical skeletons in sneakers in a dark practice gym, filmed like a phone video.
+
+| Shot | On screen |
+|---|---|
+| Live, 0:00 | Handheld from the sideline. The whole possession plays in real time, and the phone chases the ball up to the rim. |
+| Replay, 0:06 | Slow motion from low in front: the between-the-legs, both crosses and the step-back at knee height. |
+| Shot, 0:10 | Slow motion from behind the shooter: his back and the rim above, the late closeout, the swish. |
+
+## How v4 is made
+
+- **Skeletons:** `tools/bones.py` takes the bone meshes of the OpenSim full-body model (Rajagopal et al. 2016). It poses them in the model's default stance, splits the torso into single vertebrae, ribs, sternum, shoulder blades and collarbones, and smooths the coarse long bones.
+  - `src/boneskel.js` maps every piece onto the Rocketbox rig's bind pose. It lines up joint centres and the axis the rig's IK aims (knees and elbows along their poles, the hand by its thumb side), then skins each piece to the bone that carries it.
+  - The same solved mocap pose that drives the 3D players drives the skeletons. The spine bends vertebra by vertebra and each rib follows its own vertebra.
+  - The sneakers are the players' own, cut out of the skinned model by their foot weights (`makeShoes`).
+  - `src/index3.html?bones` puts the same skeletons into the v3 arena.
+- **Gym:** `src/gym.js`. A maple floor with black lines, scuffs and soft lamp glare in its reflection, black block walls with mats, steel trusses, round LED high-bays, a glass backboard on a padded stanchion, an exit sign, a scoreboard and a ball rack.
+- **Phone camera:** `src/camera4.js` and `src/timeline4.js`. Portrait at 30 fps, handheld shake in sim time (so it slows down in the replays), and one smoothed path per shot.
+- **Motion blur and anti-aliasing:** `src/main4.js`. Each frame averages 4 sub-frames across a 180° shutter, rendered in linear HDR with a sub-pixel jitter each. Then tone mapping, grain and a light vignette.
+- **Audio:** `tools/audio_gym.py`. Gym room tone, dribbles with the gym's slap-back, squeaks, the gather, the release and the swish. Hits in the slow-motion shots are pitched down and stretched. Each cut gets a swoosh.
 
 ## v3: what it shows
 
@@ -64,8 +88,10 @@ A right-wing isolation with the clock running out and your team down two.
 
 ```bash
 npm install
-pip install pillow numpy scipy imageio-ffmpeg
+pip install pillow numpy scipy imageio-ffmpeg trimesh networkx
 npm run assets      # Rocketbox models + uniforms, CMU mocap clips
+npm run preview:v4  # quick 540x960 check of v4
+npm run render:v4   # final 1080x1920 v4 with audio -> out/skeleton_gym.mp4
 npm run preview:v3  # quick 540p check of v3
 npm run render:v3   # final 1080p60 v3 with audio -> out/tweener.mp4
 npm run render:v3:skel  # the same with skeletons -> out/tweener_skeleton.mp4
@@ -85,6 +111,7 @@ Useful dev tools:
 ## Credits
 
 - CMU Graphics Lab Motion Capture Database (mocap.cs.cmu.edu), created with funding from NSF EIA-0196217
-- Microsoft Rocketbox Avatar Library (MIT) for the character models and textures
+- Microsoft Rocketbox Avatar Library (MIT) for the character models and textures (and v4's sneakers)
+- OpenSim full-body musculoskeletal model: Rajagopal, A., Dembia, C.L., DeMers, M.S., Delp, D.D., Hicks, J.L., Delp, S.L. (2016), "Full-body musculoskeletal model for muscle-driven simulation of human gait", IEEE TBME. Bone geometry from opensim-org/opensim-models, fetched at build time.
 - three.js (MIT)
 - Barlow, Barlow Condensed and Graduate fonts (SIL Open Font License, see `src/fonts/LICENSES-OFL.txt`)
