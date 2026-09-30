@@ -46,4 +46,10 @@ if [ ! -s assets/bones/bones.bin ]; then
   python3 tools/bones.py "$OSM/opensim-models" assets/bones
   rm -rf "$OSM"
 fi
+# Pose tracking models for tools/track.py (MediaPipe Pose Landmarker; needs: pip install mediapipe, and libegl1)
+mkdir -p assets/track
+for m in heavy full; do
+  [ -s assets/track/pose_landmarker_$m.task ] || curl -sf -o assets/track/pose_landmarker_$m.task \
+    "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_$m/float16/latest/pose_landmarker_$m.task"
+done
 echo "assets ready"

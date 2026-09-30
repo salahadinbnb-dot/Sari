@@ -8,6 +8,20 @@
 - v2: 1-on-1 against a square defender, shot from behind the ball handler. [`out/1v1_pov.mp4`](out/1v1_pov.mp4) (1920×1080, 60 fps, H.264 + AAC)
 - v1: ball-screen version with procedural animation. [`out/ball_screen_pov.mp4`](out/ball_screen_pov.mp4) (1080p, 30 fps)
 
+## Motion from real video
+
+`tools/track.py` tracks one player's body through any video clip, running MediaPipe Pose Landmarker on the CPU. The joints are smoothed with a One-Euro filter, and the tracker stays on the chosen player (`--hint x,y`, or the biggest person by default).
+
+```bash
+python3 tools/track.py clip.mp4 out/track/clip [--hint 0.5,0.6] [--t0 2.0 --t1 9.0]
+```
+
+It writes three files:
+
+- `clip_overlay.mp4`: the footage with the tracked skeleton drawn on it.
+- `clip_pose.mp4`: the skeleton alone on black, the pose-reference format that AI video tools take.
+- `clip.json`: per-frame 2D image landmarks with visibility, plus 3D world landmarks in metres around the hips.
+
 ## v4: what it shows
 
 The same play as v3 (between the legs, cross, cross, step-back three over a defender who slides with every move and
@@ -88,7 +102,7 @@ A right-wing isolation with the clock running out and your team down two.
 
 ```bash
 npm install
-pip install pillow numpy scipy imageio-ffmpeg trimesh networkx
+pip install pillow numpy scipy imageio-ffmpeg trimesh networkx mediapipe
 npm run assets      # Rocketbox models + uniforms, CMU mocap clips
 npm run preview:v4  # quick 540x960 check of v4
 npm run render:v4   # final 1080x1920 v4 with audio -> out/skeleton_gym.mp4
