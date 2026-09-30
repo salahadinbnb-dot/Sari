@@ -10,10 +10,14 @@ import { makeBall } from './ball.js';
 import { SideCam } from './camera3.js';
 import { Hud3 } from './hud3.js';
 import { makeIndicator } from './overlays.js';
+import { makeSkeleton } from './skeleton.js';
 
 const W = 1920, H = 1080;
 const q = new URLSearchParams(location.search);
 export const SPECS = { you: { model: '04', tex: 'you', height: 1.96 }, d1: { model: '03', tex: 'd1', height: 1.97 } };
+// ?skel: draw the players as their skeletons (same motion, no skinned model)
+const SKEL = q.has('skel');
+const SKEL_STYLE = { you: { bone: '#86adff', joint: '#2f6bff', glow: '#1f55ff' }, d1: { bone: '#ff96a0', joint: '#ff2238', glow: '#d0102a' } };
 
 async function init() {
   const canvas = document.getElementById('gl');
@@ -38,6 +42,7 @@ async function init() {
   const T = await loadTemplates(['04', '03']);
   const players = {};
   for (const [name, s] of Object.entries(SPECS)) { const { root, k } = makePlayerMesh(T, s); scene.add(root); players[name] = { root, rig: new Rig(root, k), spec: s }; }
+  if (SKEL) for (const [name, p] of Object.entries(players)) { p.root.traverse(o => { if (o.isMesh) o.visible = false; }); p.skel = makeSkeleton(scene, SKEL_STYLE[name]); }
   const clips = {}; for (const c of CLIPS3) clips[c] = await loadClip(c);
   const legOf = (r) => r.len.thigh + r.len.calf;
   const tracks = buildTracks3(clips, { you: legOf(players.you.rig), d1: legOf(players.d1.rig) });
@@ -75,6 +80,7 @@ function renderScene() {
 function poseAll(st) {
   const Y = game.youPose(st); players.you.rig.applyMocap(Y.T, Y.T.src, Y.opt);
   const D = game.d1Pose(st); players.d1.rig.applyMocap(D.T, D.T.src, D.opt);
+  if (SKEL) for (const p of Object.values(players)) p.skel.update(p.rig);
   const b = game.ball(st);
   ball.position.copy(b.pos); ball.quaternion.copy(b.q);
   arena.net.update(b.state === 'net' ? b.netU : (b.state === 'drop' ? 1.2 : 0), b.state === 'net' ? 1 : 0);

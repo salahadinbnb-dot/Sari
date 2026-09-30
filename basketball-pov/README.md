@@ -3,6 +3,7 @@
 2K-style gameplay clips and breakdowns, rendered from three.js and driven by real motion capture.
 
 - **v3 (latest): tweener, cross, cross, step-back three, from the side.** [`out/tweener.mp4`](out/tweener.mp4) (1920×1080, 60 fps, H.264 + AAC)
+  - Skeleton version: [`out/tweener_skeleton.mp4`](out/tweener_skeleton.mp4). It's the same play and motion, with the players drawn as their skeletons instead of the 3D models (`src/index3.html?skel`).
 - v2: 1-on-1 against a square defender, shot from behind the ball handler. [`out/1v1_pov.mp4`](out/1v1_pov.mp4) (1920×1080, 60 fps, H.264 + AAC)
 - v1: ball-screen version with procedural animation. [`out/ball_screen_pov.mp4`](out/ball_screen_pov.mp4) (1080p, 30 fps)
 
@@ -27,6 +28,7 @@ A right-wing isolation with the clock running out and your team down two.
   - `tools/geom3.mjs` prints the spacing, bearing and facing over time.
 - **Ball:** `src/game3.js`. The dribble follows the captured hands. Every push is detected from the hand's downward speed, and the ball rides under the palm while in contact. Between pushes it's ballistic, and the tweener bounce lands between the ankles. The release goes where the shooter faced at the gather, with backspin on the way to the rim.
 - **Camera:** `src/camera3.js`. A sideline camera that's a quarter behind the ball handler for the dribble moves. It swings square to the shot line for the step-back and the shot, so the separation opens across the screen, then widens to hold the shooter, the arc and the rim.
+- **Skeleton view:** `src/skeleton.js`. With `?skel` on the page, the players' skinned models are hidden and each rig's solved joints are drawn as bones and joints: spine, pelvis, limbs, fingers and a head with a facing marker. It shows the exact motion the models play.
 - **HUD:** `src/hud3.js`. The scorebug with a running clock, move callouts, the shot meter, the separation readout and the end banner.
 - **Audio:** the same synth as v2, plus the game horn and a crowd build while the shot is in the air.
 
@@ -66,6 +68,7 @@ pip install pillow numpy scipy imageio-ffmpeg
 npm run assets      # Rocketbox models + uniforms, CMU mocap clips
 npm run preview:v3  # quick 540p check of v3
 npm run render:v3   # final 1080p60 v3 with audio -> out/tweener.mp4
+npm run render:v3:skel  # the same with skeletons -> out/tweener_skeleton.mp4
 npm run preview     # quick 540p check of v2
 npm run render      # final 1080p60 v2 with audio -> out/1v1_pov.mp4
 npm run render:v1   # the original ball-screen version
