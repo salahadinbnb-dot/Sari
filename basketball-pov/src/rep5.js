@@ -408,7 +408,9 @@ export class Rep {
       const a = L[k], nx = L[k + 1], u = nx ? smooth((t - (nx.t - 0.12)) / 0.12) : 0;
       return { ...b, heels: 0, lean: 0, open: a.open + ((nx ? nx.open : a.open) - a.open) * u, kind: a.kind };
     }
-    if (this.plan.contact) { const open = smooth((b.speed - 0.35) / 0.5); return { ...b, heels: 0, lean: 0, open, kind: open < 0.5 ? 'set' : 'notset' }; }
+    // (read at the contact and held after it: that's when the call is made)
+    if (this.plan.contact) { const bc = this.bal[clamp(Math.round(Math.min(t, this.plan.contact.t) * HZ), 0, this.bal.length - 1)];
+      const open = smooth((bc.speed - 0.35) / 0.5); return { ...b, heels: 0, lean: 0, open, kind: open < 0.5 ? 'set' : 'notset' }; }
     const heels = Math.max(smooth((b.behind - 0.02) / 0.08), smooth((b.back - 0.3) / 0.4));
     const lean = Math.max(smooth((b.outside - 0.03) / 0.08), smooth((b.lat - 0.35) / 0.4));
     const open = Math.max(heels, lean, smooth((b.away - 0.35) / 0.4));

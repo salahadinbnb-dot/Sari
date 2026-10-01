@@ -30,10 +30,10 @@ coaching point, plays the rise in slow motion and cuts to the rim for the result
 
 | Rep | The read |
 |---|---|
-| 1 · Contested make | A kick-out to the wing. The help defender sprints out, then chops his feet and arrives balanced with a hand up. The catch-and-shoot goes in over him, but it's a tight look (2.6 ft at the release). |
-| 2 · On his heels | A hard first step. He drops back to stay in front, so his weight is going away. Rise while he's still backing up (6.1 ft, wide open). |
-| 3 · On the lean | A double crossover. He slides hard with the second one. Stop and rise while his momentum carries him sideways (6.2 ft, wide open). |
-| 4 · Contact finish | A drive against a help defender who is still sliding over. Shoulder into his chest before you go up, ball high on the far side, and finish off the glass: block on him, and-one. |
+| 1 · Contested make | A kick-out to the wing. The help defender sprints out, chops his feet, arrives balanced and goes up with both hands. The catch-and-shoot goes in over him, but it's a tight look (2.5 ft at the release). |
+| 2 · On his heels | A hard first step. He drops back to stay in front, so his weight is going away. Rise while he's still backing up (6.4 ft, wide open). |
+| 3 · On the lean | A double crossover. He slides hard with the second one. Stop and rise while his momentum carries him sideways (5.9 ft, open). |
+| 4 · Contact finish | A drive against a help defender who is still sliding over. Shoulder into his chest before you go up, ball high on the far side, and finish off the glass. He goes up late with both hands: block on him, and-one. |
 
 On screen:
 
@@ -52,16 +52,16 @@ The numbers come from:
 - **Motion:** every rep is built from whole real takes (CMU mocap), not drills spliced at fixed times.
   - `python3 tools/transit.py A ta0 ta1 B tb0 tb1` finds where two takes can be cut together. It compares pose, joint velocities and body-frame hip motion in each pose's own frame, scaled by leg length.
   - Cuts are inertialized (`inert` in `src/animator.js`): the new take plays from its first frame, and only the pose and velocity difference dies away, so nothing is averaged and the footwork stays the performer's.
-  - Air turns are taken out while the feet are off the floor.
+  - Air turns are taken out while the feet are off the floor, and the jump shot's sideways drift in the air is cut to a third (`compress`), so the jumps go up, not across.
   - The takes used:
     - Shooter: the jump shot 124_05, the layup 124_06, the crossover dribble 06_14 and the drive 78_32.
-    - Defender: the closeout-and-stop 78_25, the retreat 78_28, the slides 78_30 and the help slide-and-stop 78_26.
+    - Defender: the closeout-and-stop 78_25, the retreat 78_28, the slides 78_30 and the help slide-and-stop 78_26. When he contests at the rim or on the closeout he gets off the floor: the jump of 124_05, cut in where the poses match.
 - **Placement:** `src/play5.js` anchors a moment of each take to the floor (`anchoredTrack`), so spacing is set where it matters (the stop of the closeout, the takeoff, the contact) and everything else follows from the real motion.
   - The defender's spot and facing were fitted so the retreat goes straight back and the slides run across the shooter's front.
   - `node tools/geom5.mjs <rep>` prints spacing, body clearance (capsules; negative means the bodies overlap) and the defender's balance.
 - **Hands, ball and contact:** `src/rep5.js`.
   - The jump shot's arms are procedural on top of the performer's legs and body. The ball sits on the shooting hand at a set point above the forehead, the guide hand rides its side and comes off just before the release, the arm extends about 62° toward the rim, the wrist snaps, and the follow-through is held until he lands.
-  - The defender's contest hand goes straight up and is kept off the ball.
+  - The defender's contest hands go straight up (verticality) and are kept off the ball.
   - The pass and the catch, the dribbles (found in the performer's hands) and the layup off the glass are handled here too.
   - The contact is a collision: whatever part of the help defender's slide would carry him through the finisher is taken out along the line of contact, plus a shove that rocks him back.
 - **Balance:** the defender's centre of mass from his hips, thorax, head and thighs, and the extrapolated centre of mass (XcoM = CoM + v/ω₀, ω₀ = √(g/l)), measured against his feet. A closeout is read by phase: sprinting, chop steps, then balanced. A help defender is set once he has stopped moving.
