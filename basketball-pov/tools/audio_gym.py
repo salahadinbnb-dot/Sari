@@ -174,10 +174,10 @@ for c in ev.get('cuts', []):
 for b in ev.get('board', []):
     place(mix, verb(slow(bank(), b.get('rate', 1)), 0.4), b['t'], db(-11), pan=0.05)
 for c in ev.get('thuds', []):
-    place(mix, verb(slow(thud(), c.get('rate', 1)), 0.3), c['t'], db(-8))
+    place(mix, verb(slow(thud(), c.get('rate', 1)), 0.3), c['t'], db(-11))
     place(mix, verb(slow(squeak(), c.get('rate', 1)), 0.45), c['t'] + 0.03, db(-18), pan=0.2)
 for w in ev.get('whistles', []):
-    place(mix, verb(whistle(), 0.5), w['t'], db(-13), pan=-0.25)
+    place(mix, verb(whistle(), 0.5), w['t'], db(-15), pan=-0.25)
 for f in ev.get('freezes', []):
     place(mix, freeze(), f['t'] - 0.27, db(-24))
 
