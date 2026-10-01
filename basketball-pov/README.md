@@ -30,34 +30,46 @@ coaching point, plays the rise in slow motion and cuts to the rim for the result
 
 | Rep | The read |
 |---|---|
-| 1 · Contested make | He's balanced, weight on his toes. You rise anyway, he gets a hand up, and it drops. It went in, but it was still the wrong time to shoot. |
-| 2 · On his heels | A hard drive pushes him back. You pull up while his weight is still going away from you, so he can't jump back toward you. |
-| 3 · On the lean | A jab. He bites and his hips go outside his feet. You rise before he re-plants. |
-| 4 · Contact finish | The help defender slides over but isn't set. Hit him first, absorb it, keep the ball high and away from him, and finish off the glass for the and-one. |
+| 1 · Contested make | A kick-out to the wing. The help defender sprints out, then chops his feet and arrives balanced with a hand up. The catch-and-shoot goes in over him, but it's a tight look (2.6 ft at the release). |
+| 2 · On his heels | A hard first step. He drops back to stay in front, so his weight is going away. Rise while he's still backing up (6.1 ft, wide open). |
+| 3 · On the lean | A double crossover. He slides hard with the second one. Stop and rise while his momentum carries him sideways (6.2 ft, wide open). |
+| 4 · Contact finish | A drive against a help defender who is still sliding over. Shoulder into his chest before you go up, ball high on the far side, and finish off the glass: block on him, and-one. |
 
 On screen:
 
 - **Floor meter** under the defender: a ring around his feet, and an arrow from his centre of mass to where his momentum is taking it. It's red while that point stays inside his feet (he can still contest), and green once it leaves them (on his heels, leaning, or not set).
-- **Weight panel** at the bottom: his state right now, and a timing strip of his balance over the rep. The strip is revealed as the rep plays, with the shot (or the contact) marked on it. A shot over red was contested; a shot over green came in the window.
+- **Weight panel** at the bottom: his state right now, and a timing strip of his balance over the rep. The strip is revealed as the rep plays, with the shot marked on it, including the closest-defender distance at the release in NBA tracking bands (0-2 ft very tight, 2-4 tight, 4-6 open, 6+ wide open).
 - Freeze frames with the coaching point, a slow-motion tag, rep titles, and a burst where the shoulder meets his chest.
+
+The numbers come from:
+
+- **Shooting percentages:** NBA.com player tracking, 2024-25 regular season, league totals. Pull-up 3s: 27.5% tight, 36.3% wide open. Catch-and-shoot 3s: 31.8% tight, 39.1% wide open.
+- **The help-defense rule:** NBA Official Playing Rules 2025-26, Comments on the Rules II.C. A defender may not move into the shooter's path once he has started his upward motion, and on a drive that motion starts at the gather. The restricted area is 4 ft.
+- **Reaction and change-of-direction times:** Vater 2024 (Sci Rep) and Dos'Santos et al. 2018 (Sports Med).
 
 ## How v5 is made
 
-- **Reps:** `src/play5.js`. Each rep is its own pair of CMU mocap tracks: shot fake and jab (78_22, 78_20), drive (78_32), dribble jumper (06_15) and layup (124_06) for the ball handler; stance, retreat, slide and run-stop (78_30, 78_28, 78_26) for the defender.
-  - `node tools/geom5.mjs <rep>` prints spacing, facing and the defender's balance through a rep.
-  - `node tools/fitcontact5.mjs` solves the start spots so the help defender meets the finisher's left shoulder at the take-off.
-- **Balance:** `src/rep5.js`. The defender's centre of mass comes from his hips, thorax, head and thighs. The extrapolated centre of mass (XcoM = CoM + v/ω₀, ω₀ = √(g/l)) is where his momentum carries it.
-  - On his heels: the XcoM is behind every point of his feet, away from the shooter.
-  - Leaning: the XcoM is outside his feet sideways.
-  - A help defender is set once he has stopped moving.
-- **Ball, hands and contact:** also `src/rep5.js`. It handles the triple threat, dribbles found in the source hands, the gather, and the jumper's arc or the layup off the glass. It also drives the defender's contest arm and the shove at the contact (his upper body knocked back, the finisher absorbing it).
-- **Overlays and edit:**
-  - `src/meter5.js`: the floor meter.
-  - `src/hud5.js` and `src/hud5.css`: titles, captions, the weight panel, the contact burst and the cards.
-  - `src/timeline5.js`: the edit.
-  - `src/camera5.js`: a three-quarter view per rep, a camera beside the rim, and a weak-side view for the finish.
+- **Motion:** every rep is built from whole real takes (CMU mocap), not drills spliced at fixed times.
+  - `python3 tools/transit.py A ta0 ta1 B tb0 tb1` finds where two takes can be cut together. It compares pose, joint velocities and body-frame hip motion in each pose's own frame, scaled by leg length.
+  - Cuts are inertialized (`inert` in `src/animator.js`): the new take plays from its first frame, and only the pose and velocity difference dies away, so nothing is averaged and the footwork stays the performer's.
+  - Air turns are taken out while the feet are off the floor.
+  - The takes used:
+    - Shooter: the jump shot 124_05, the layup 124_06, the crossover dribble 06_14 and the drive 78_32.
+    - Defender: the closeout-and-stop 78_25, the retreat 78_28, the slides 78_30 and the help slide-and-stop 78_26.
+- **Placement:** `src/play5.js` anchors a moment of each take to the floor (`anchoredTrack`), so spacing is set where it matters (the stop of the closeout, the takeoff, the contact) and everything else follows from the real motion.
+  - The defender's spot and facing were fitted so the retreat goes straight back and the slides run across the shooter's front.
+  - `node tools/geom5.mjs <rep>` prints spacing, body clearance (capsules; negative means the bodies overlap) and the defender's balance.
+- **Hands, ball and contact:** `src/rep5.js`.
+  - The jump shot's arms are procedural on top of the performer's legs and body. The ball sits on the shooting hand at a set point above the forehead, the guide hand rides its side and comes off just before the release, the arm extends about 62° toward the rim, the wrist snaps, and the follow-through is held until he lands.
+  - The defender's contest hand goes straight up and is kept off the ball.
+  - The pass and the catch, the dribbles (found in the performer's hands) and the layup off the glass are handled here too.
+  - The contact is a collision: whatever part of the help defender's slide would carry him through the finisher is taken out along the line of contact, plus a shove that rocks him back.
+- **Balance:** the defender's centre of mass from his hips, thorax, head and thighs, and the extrapolated centre of mass (XcoM = CoM + v/ω₀, ω₀ = √(g/l)), measured against his feet. A closeout is read by phase: sprinting, chop steps, then balanced. A help defender is set once he has stopped moving.
+- **Overlays and edit:** `src/meter5.js` (floor meter), `src/hud5.js` and `src/hud5.css` (titles, captions, weight panel, contact burst, cards), `src/timeline5.js` (the edit), `src/camera5.js` (cameras).
+  - The duel camera keeps its side for the whole rep, so it never swings across the players.
+  - The finish is filmed from the baseline.
 - **Rendering:** `src/main5.js`, with the same skeletons, gym and motion blur as v4 (2 sub-frames). A freeze is rendered once and only re-graded for its other frames.
-- **Audio:** `tools/audio_gym.py`, now with the glass, the body contact, the whistle and a freeze accent.
+- **Audio:** `tools/audio_gym.py`, with the glass, the body contact, the whistle and a freeze accent.
 
 ## v4: what it shows
 

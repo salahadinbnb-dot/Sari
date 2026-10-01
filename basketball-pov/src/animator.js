@@ -144,7 +144,8 @@ export class Track {
   atIndex(i, t) {
     const sg = this.segs[i];
     const T = this.segTargets(i, t);
-    if (i > 0 && t - sg.at < sg.blend) {
+    if (i > 0 && sg.inert && t >= sg.at && t - sg.at < sg.inert) return this.inertialize(i, t, T);
+    if (i > 0 && !sg.inert && t - sg.at < sg.blend) {
       const P = this.atIndex(i - 1, t);
       const u = smooth((t - sg.at) / sg.blend);
       if (sg._turn === undefined) { // turn direction fixed at the middle of the blend
@@ -159,6 +160,31 @@ export class Track {
       };
       return B;
     }
+    return T;
+  }
+  // Inertialized cut (seg.inert = settle time in s): the new segment plays from its first frame and only the
+  // difference to where the old one was - pose offset and velocity - is carried over and dies away like a
+  // critically damped spring. Unlike a crossfade nothing is averaged, so the new motion keeps its own timing
+  // and footwork.
+  inertialize(i, t, T) {
+    const sg = this.segs[i];
+    if (!sg._off) {
+      const t0 = sg.at, h = 1 / 120;
+      const P0 = this.atIndex(i - 1, t0), Pm = this.atIndex(i - 1, t0 - h), N0 = this.segTargets(i, t0), Np = this.segTargets(i, t0 + h);
+      const off = { pos: {}, vel: {}, quat: {}, yaw: 0 };
+      for (const k of Object.keys(N0.pos)) {
+        off.pos[k] = P0.pos[k].clone().sub(N0.pos[k]);
+        off.vel[k] = P0.pos[k].clone().sub(Pm.pos[k]).sub(Np.pos[k].clone().sub(N0.pos[k])).multiplyScalar(1 / h);
+      }
+      for (const k of Object.keys(N0.quat)) off.quat[k] = P0.quat[k].clone().multiply(N0.quat[k].clone().invert());
+      let d = P0.yaw - N0.yaw; while (d > Math.PI) d -= 2 * Math.PI; while (d < -Math.PI) d += 2 * Math.PI; off.yaw = d;
+      sg._off = off;
+    }
+    const o = sg._off, tau = t - sg.at, lam = 6.6 / sg.inert, e = Math.exp(-lam * tau), k = (1 + lam * tau) * e;
+    for (const j of Object.keys(T.pos)) T.pos[j].addScaledVector(o.pos[j], k).addScaledVector(o.vel[j], tau * e);
+    const I = new THREE.Quaternion();
+    for (const j of Object.keys(T.quat)) T.quat[j] = I.clone().slerp(o.quat[j], k).multiply(T.quat[j]);
+    T.yaw += o.yaw * k;
     return T;
   }
   hip(t) { const T = this.at(t); return T.pos.lhipjoint.clone().add(T.pos.rhipjoint).multiplyScalar(0.5); }

@@ -111,6 +111,7 @@ function place(c, jx, jy) {
 const JIT = [[-0.25, -0.25], [0.25, 0.25], [0.25, -0.25], [-0.25, 0.25], [0, 0], [0.125, -0.375], [-0.375, 0.125], [0.375, 0.375]];
 function renderSub(rep, mode, st, k, first) {
   poseAll(rep, st, mode);
+  // (window.camOverride = {pos, look, fov} pins the camera, for trying angles in stills)
   place(window.camOverride || cam.at(rep.name, mode, st), JIT[k % JIT.length][0], JIT[k % JIT.length][1]);
   scene.updateMatrixWorld(true);
   if (first) { const v = meter.group.visible; gym.floor.visible = false; meter.group.visible = false; gym.reflector.onBeforeRender(renderer, scene, camera); gym.floor.visible = true; meter.group.visible = v; }

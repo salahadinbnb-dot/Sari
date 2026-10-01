@@ -1,8 +1,9 @@
-// v5 rep engine: ball, hands, defender arms, contact and the defender's balance on top of one rep's mocap tracks.
-// Generalised from game3.js: a plan says when the ball is held (triple threat), dribbled (pushes found in the
-// source hands), gathered, shot (jumper -> swish) or laid up (off the glass). The defender's balance is the
-// extrapolated centre of mass (XcoM = CoM + v / w0, the point his momentum carries him to) against his feet: when it
-// leaves the base behind his heels or outside his feet he can't contest until he re-plants.
+// v5 rep engine: ball, hands, the defender's arms, contact and the defender's balance on top of one rep's mocap
+// tracks. A plan says when the ball arrives (a pass), is held, dribbled (pushes found in the source hands), gathered,
+// shot (a jumper that rides the shooting hand from the set point, guide hand on the side, held follow-through) or
+// laid up (off the glass). The defender's balance is the extrapolated centre of mass (XcoM = CoM + v / w0, the point
+// his momentum carries him to) against his feet: when it leaves his base behind his heels or outside his feet he
+// can't contest until he re-plants.
 import * as THREE from 'three';
 import { BALL_R, footLock, ballistic } from './game2.js';
 
@@ -39,12 +40,12 @@ function findPushes(clip, a, b) {
 const bump = (tau, tau0) => tau <= 0 ? 0 : (tau / tau0) * Math.exp(1 - tau / tau0);
 
 export class Rep {
-  // plan: { simEnd, hold:[a,b]?, dribble:[a,b]?, gatherAt, gatherDur, shotClip?, flight?, layup?:{releaseClip, side},
-  //         contest?:{from, to, side, high}, contact?:{t, push, you} }
+  // plan: { simEnd, pass?:{from, t0, t1}, hold?:[a,b], dribble?:[a,b], gatherAt, gatherDur, shotClip?, flight?,
+  //         layup?:{releaseClip, side, oneHand}, contest?:{from, rise, to, side|both, reach}, contact?:{t, push, you},
+  //         labels?:[{t, kind, open}], read? }
   constructor(name, tracks, rigs, clips, plan) {
     this.name = name; this.tracks = tracks; this.rigs = rigs; this.clips = clips; this.plan = plan;
-    const c = plan.contact;
-    if (c && !c.dir) { const a = tracks.you.hip(c.t), b = tracks.d1.hip(c.t); c.dir = V(b.x - a.x, 0, b.z - a.z).normalize(); }
+    this.prepContact();
     this.buildTable();
     this.buildPushes();
     this.buildBall();
@@ -54,7 +55,7 @@ export class Rep {
   buildTable() {
     const rig = this.rigs.you, tr = this.tracks.you, d1 = this.tracks.d1, drig = this.rigs.d1, P0 = this.plan;
     const n = Math.ceil(P0.simEnd * HZ) + 1;
-    const T = { n, hip: [], yaw: [], wL: [], wR: [], xL: [], xR: [], yL: [], yR: [], head: [], ankL: [], ankR: [], d1hip: [], d1yaw: [], d1shL: [], d1shR: [], d1head: [], d1com: [], d1feet: [] };
+    const T = { n, hip: [], yaw: [], wL: [], wR: [], xL: [], xR: [], yL: [], yR: [], head: [], shL: [], shR: [], ankL: [], ankR: [], d1hip: [], d1yaw: [], d1shL: [], d1shR: [], d1head: [], d1com: [], d1feet: [] };
     const feet = { you: { L: [], R: [] }, d1: { L: [], R: [] } };
     const addFeet = (who, P) => { for (const s of ['L', 'R']) { const k = s.toLowerCase(); feet[who][s].push({ a: P.pos[k + 'tibia'].clone(), h: P.pos[k + 'hipjoint'].clone(), w: P.planted ? P.planted[s] : 0 }); } };
     const X = V(1, 0, 0), Y = V(0, 1, 0);
@@ -66,7 +67,8 @@ export class Rep {
       T.wL.push(rig.P.L_Hand.clone()); T.wR.push(rig.P.R_Hand.clone());
       T.xL.push(X.clone().applyQuaternion(rig.W.L_Hand)); T.xR.push(X.clone().applyQuaternion(rig.W.R_Hand));
       T.yL.push(Y.clone().applyQuaternion(rig.W.L_Hand)); T.yR.push(Y.clone().applyQuaternion(rig.W.R_Hand));
-      T.head.push(rig.P.Head.clone()); T.ankL.push(P.pos.ltibia.clone()); T.ankR.push(P.pos.rtibia.clone());
+      T.head.push(rig.P.Head.clone()); T.shL.push(rig.P.L_UpperArm.clone()); T.shR.push(rig.P.R_UpperArm.clone());
+      T.ankL.push(P.pos.ltibia.clone()); T.ankR.push(P.pos.rtibia.clone());
       addFeet('you', P);
       const D = d1.at(t); this.contactOffset('d1', D, t);
       drig.applyMocap(D, D.src, {});
@@ -80,22 +82,33 @@ export class Rep {
     }
     this.T = T;
     const leg = (r) => r.len.thigh + r.len.calf;
+    this.armLen = { you: rig.len.upper + rig.len.fore, d1: drig.len.upper + drig.len.fore };
     this.lock = { you: { L: footLock(feet.you.L, leg(rig)), R: footLock(feet.you.R, leg(rig)) }, d1: { L: footLock(feet.d1.L, leg(drig)), R: footLock(feet.d1.R, leg(drig)) } };
     const w = Math.round(0.1 * HZ), raw = T.yaw.map(y => V(Math.sin(y), 0, Math.cos(y)));
     T.fwd = raw.map((_, i) => { const a = V(); for (let j = -w; j <= w; j++) a.add(raw[clamp(i + j, 0, n - 1)]); return a.normalize(); });
   }
-  // shove at the rim: the defender's upper body goes back along the line of the drive, the finisher absorbs a little
+  // The contact at the rim as a collision, not an overlap: from the moment the shoulder meets his chest the help
+  // defender can't keep sliding into the finisher - whatever of his slide would carry him through is taken out along
+  // the line of contact - and on top of that the shove rocks him back a step; the finisher gives a few centimetres.
+  prepContact() {
+    const c = this.plan.contact; if (!c) return;
+    const Y = (t) => this.tracks.you.hip(t), D = (t) => this.tracks.d1.hip(t), a = Y(c.t), b = D(c.t);
+    c.dir = V(b.x - a.x, 0, b.z - a.z); const s0 = c.dir.length(); c.dir.normalize();
+    const n = Math.ceil((this.plan.simEnd - c.t) * HZ) + 2, pen = [];
+    for (let i = 0; i < n; i++) { const t = c.t + i / HZ, y = Y(t), d = D(t); pen.push(Math.max(0, s0 - ((d.x - y.x) * c.dir.x + (d.z - y.z) * c.dir.z))); }
+    const k = Math.round(0.03 * HZ);
+    this._pen = pen.map((_, i) => { let s = 0, m = 0; for (let j = -k; j <= k; j++) { s += pen[clamp(i + j, 0, n - 1)]; m++; } return s / m; });
+  }
   contactOffset(who, P, t) {
     const c = this.plan.contact; if (!c) return;
     const tau = t - c.t; if (tau <= 0) return;
-    const dir = c.dir.clone().normalize();
-    const amt = who === 'd1' ? c.push * bump(tau, 0.16) + c.push * 0.45 * smooth(tau / 0.35) : -(c.you || 0.06) * bump(tau, 0.1);
+    const pen = this._pen[clamp(Math.round(tau * HZ), 0, this._pen.length - 1)];
+    const amt = who === 'd1' ? pen + c.push * bump(tau, 0.18) : -(c.you || 0.06) * bump(tau, 0.11);
     if (!amt) return;
     for (const [k, v] of Object.entries(P.pos)) {
-      if (/tibia|foot|toes/.test(k)) continue;
-      const w = /femur/.test(k) ? 0.5 : 1;
-      v.addScaledVector(dir, amt * w);
-      if (who === 'd1') v.y -= 0.05 * bump(tau, 0.2) * w;
+      if (who === 'you' && /tibia|foot|toes/.test(k)) continue;
+      v.addScaledVector(c.dir, amt);
+      if (who === 'd1' && !/tibia|foot|toes/.test(k)) v.y -= 0.05 * bump(tau, 0.22);
     }
   }
   tab(key, t) {
@@ -104,6 +117,7 @@ export class Rep {
     if (Array.isArray(a[0])) return a[u < 0.5 ? i : j].map(v => v.clone());
     return a[i].clone().lerp(a[j], u);
   }
+  // palm centre, finger direction (x) and the hand's y axis; the palm faces -y
   palm(side, t) {
     const w = this.tab('w' + side, t), x = this.tab('x' + side, t).normalize(), y = this.tab('y' + side, t).normalize();
     return { c: w.clone().addScaledVector(x, 0.085).addScaledVector(y, 0.018), x, y };
@@ -125,8 +139,8 @@ export class Rep {
       const segs = this.tracks.you.segs;
       for (let i = 0; i < segs.length; i++) {
         const sg = segs[i], clip = this.clips[sg.clip];
-        const t0 = Math.max(P0.dribble[0], i === 0 ? 0 : sg.at + sg.blend * 0.5);
-        const t1 = Math.min(P0.dribble[1], i + 1 < segs.length ? segs[i + 1].at + segs[i + 1].blend * 0.5 : P0.simEnd);
+        const t0 = Math.max(P0.dribble[0], i === 0 ? 0 : sg.at + (sg.inert ? 0.05 : sg.blend * 0.5));
+        const t1 = Math.min(P0.dribble[1], i + 1 < segs.length ? segs[i + 1].at + (segs[i + 1].inert ? 0 : segs[i + 1].blend * 0.5) : P0.simEnd);
         if (t1 <= t0) continue;
         const c0 = sg.from + (t0 - sg.at) * sg.rate, c1 = sg.from + (t1 - sg.at) * sg.rate;
         for (const p of findPushes(clip, c0 - 0.4, c1)) {
@@ -141,7 +155,10 @@ export class Rep {
     }
     this.pushes = pushes;
     const sh = this.tracks.you.segs.find(s => s.shot);
-    if (P0.shotClip !== undefined) { P0.release = sh.at + (P0.shotClip - sh.from) / sh.rate; P0.rim = P0.release + P0.flight; P0.netEnd = P0.rim + 0.26; }
+    if (P0.shotClip !== undefined) {
+      P0.release = sh.at + (P0.shotClip - sh.from) / sh.rate; P0.rim = P0.release + P0.flight; P0.netEnd = P0.rim + 0.26;
+      P0.setAt = P0.release - 0.26;
+    }
     if (P0.layup) {
       P0.release = sh.at + (P0.layup.releaseClip - sh.from) / sh.rate;
       P0.board = P0.release + 0.3; P0.rim = P0.board + 0.2; P0.netEnd = P0.rim + 0.24;
@@ -154,20 +171,30 @@ export class Rep {
     const fl = win(T.ankL), fr = win(T.ankR);
     for (let i = i0; i < T.n; i++) if (T.ankL[i].y > fl + 0.05 && T.ankR[i].y > fr + 0.05) { P0.takeoff = i / HZ; break; }
     if (P0.takeoff === undefined || P0.takeoff > P0.release) P0.takeoff = P0.release - 0.25;
+    // landing: first moment after the release with a foot back on the floor
+    for (let i = Math.round(P0.release * HZ); i < T.n; i++) if (T.ankL[i].y < fl + 0.03 || T.ankR[i].y < fr + 0.03) { P0.land = i / HZ; break; }
+    if (P0.land === undefined) P0.land = P0.release + 0.35;
   }
   onPalm(side, t) { const p = this.palm(side, t); return p.c.clone().addScaledVector(UP, -(BALL_R + 0.012)).addScaledVector(this.fwd(t), 0.015); }
+  // both hands on it: between the palms, kept in front of the body
   holdBall(t) {
     const L = this.palm('L', t).c, R = this.palm('R', t).c, B = L.clone().add(R).multiplyScalar(0.5);
     const hip = this.tab('hip', t), f = this.fwd(t), ahead = B.clone().sub(hip).dot(f);
-    if (ahead < 0.25) B.addScaledVector(f, 0.25 - ahead);
+    if (ahead < 0.22) B.addScaledVector(f, 0.22 - ahead);
     return B;
   }
+  // on the shooting hand: sitting on the finger pads of the right palm (the palm faces -y)
+  shootingHandBall(t) { const p = this.palm('R', t); return p.c.clone().addScaledVector(p.y, -(BALL_R + 0.012)).addScaledVector(p.x, 0.02); }
   // triple threat: tucked at the right hip, both hands on it
   hipBall(t) {
     const f = this.fwd(t), r = V(-f.z, 0, f.x), hip = this.tab('hip', t);
     return hip.clone().addScaledVector(f, 0.3).addScaledVector(r, -0.16).setY(hip.y + 0.08);
   }
   gatherBall(t) { const f = this.fwd(t), hip = this.tab('hip', t); return hip.clone().addScaledVector(f, 0.38).addScaledVector(V(-f.z, 0, f.x), 0.08).setY(hip.y + 0.02); }
+  catchPoint() {
+    if (!this._catch) { const t1 = this.plan.pass.t1, B = this.holdBall(t1); this._catch = B; }
+    return this._catch;
+  }
   buildBall() {
     const P = this.pushes, P0 = this.plan; this.flights = [];
     for (let k = 0; k < P.length; k++) {
@@ -180,7 +207,7 @@ export class Rep {
   // both hands on the ball's sides at B (fingers up and forward)
   grip(B, t, w = 1) {
     const ov = {}, f = this.fwd(t);
-    const n = this.palm('L', t).c.sub(this.palm('R', t).c); if (n.lengthSq() < 1e-4) n.copy(V(-f.z, 0, f.x)); n.normalize();
+    const n = this.palm('L', t).c.sub(this.palm('R', t).c); if (n.lengthSq() < 1e-4) n.copy(V(f.z, 0, -f.x)); n.normalize();
     for (const [side, sg] of [['L', 1], ['R', -1]]) {
       const nn = n.clone().multiplyScalar(sg);
       let dir = f.clone().multiplyScalar(0.6).addScaledVector(UP, 0.8); dir.addScaledVector(nn, -dir.dot(nn)).normalize();
@@ -189,8 +216,59 @@ export class Rep {
     }
     return ov;
   }
+  // guide hand: on the left side of the ball, fingers up, palm toward the ball
+  guide(B, t, w) {
+    const f = this.fwd(t), side = V(f.z, 0, -f.x); // left of the shooter
+    const dir = UP.clone().multiplyScalar(0.9).addScaledVector(f, 0.3).normalize();
+    const contact = B.clone().addScaledVector(side, BALL_R + 0.006);
+    return { pos: contact.addScaledVector(dir, -0.08).addScaledVector(side, 0.018), palm: side.clone().negate(), dir, curl: 0.3, w };
+  }
+  // The jump shot's arms, in the shooter's frame (f toward the rim, r to his right) off his right shoulder and head:
+  // set point - ball above the right side of the forehead on the shooting hand, wrist cocked back, palm up; release -
+  // arm extended ~62 degrees up toward the rim, wrist snapping through; follow-through - fingers down at the rim.
+  shotFrame() {
+    if (!this._sf) { const h = this.tab('hip', this.plan.release), f = V(RIM.x - h.x, 0, RIM.z - h.z).normalize(); this._sf = { f, r: V(-f.z, 0, f.x) }; }
+    return this._sf;
+  }
+  shotArm(t) {
+    const P0 = this.plan, { f, r } = this.shotFrame(), S = this.tab('shR', t), H = this.tab('head', t), L = this.armLen.you;
+    const D = (a, b, c) => f.clone().multiplyScalar(a).addScaledVector(UP, b).addScaledVector(r, c).normalize();
+    const ballOf = (W, d, n) => W.clone().addScaledVector(d, 0.085).addScaledVector(n, BALL_R + 0.012);
+    const set = { d: D(-0.7, 0.55, 0.12), n: D(0.35, 0.92, 0) };
+    set.B = H.clone().addScaledVector(UP, 0.17).addScaledVector(f, 0.12).addScaledVector(r, 0.07);
+    set.W = set.B.clone().addScaledVector(set.n, -(BALL_R + 0.012)).addScaledVector(set.d, -0.085);
+    const rel = { d: D(0.78, 0.62, 0), n: D(0.62, -0.78, 0) }, a = 62 * Math.PI / 180;
+    rel.W = S.clone().addScaledVector(D(Math.cos(a), Math.sin(a), 0.03), L * 0.97);
+    const fol = { W: rel.W, d: D(0.5, -0.86, 0), n: D(-0.86, -0.5, 0) };
+    let W, d, n;
+    if (t <= P0.release) {
+      const u = Math.pow(smooth((t - P0.setAt) / (P0.release - P0.setAt)), 1.4);
+      W = set.W.clone().lerp(rel.W, u); d = set.d.clone().lerp(rel.d, u).normalize(); n = set.n.clone().lerp(rel.n, u).normalize();
+    } else {
+      const u = smooth((t - P0.release) / 0.09);
+      W = rel.W; d = rel.d.clone().lerp(fol.d, u).normalize(); n = rel.n.clone().lerp(fol.n, u).normalize();
+    }
+    return { B: ballOf(W, d, n), R: { pos: W, dir: d, palm: n.clone(), pole: D(0.25, -0.6, 0.6), curl: 0.18, w: 1 } };
+  }
+  // guide hand: on the ball's left side through the set, off just before the release, then held up beside it
+  guideArm(t, B, w) {
+    const P0 = this.plan, { f, r } = this.shotFrame(), left = r.clone().negate(), S = this.tab('shL', t);
+    const on = { pos: B.clone().addScaledVector(left, BALL_R + 0.024).addScaledVector(UP, -0.075).addScaledVector(f, -0.01), dir: UP.clone().multiplyScalar(0.92).addScaledVector(f, 0.38).normalize(), palm: r.clone() };
+    const off = { pos: S.clone().addScaledVector(UP, this.armLen.you * 0.78).addScaledVector(f, 0.2).addScaledVector(left, 0.06), dir: UP.clone().multiplyScalar(0.95).addScaledVector(f, 0.3).normalize(), palm: r.clone() };
+    const u = smooth((t - (P0.release - 0.07)) / 0.1);
+    return { pos: on.pos.clone().lerp(off.pos, u), dir: on.dir.clone().lerp(off.dir, u).normalize(), palm: on.palm, pole: left.clone().addScaledVector(UP, -0.6).normalize(), curl: 0.28, w };
+  }
   handsAndBall(t) {
     const P0 = this.plan, P = this.pushes;
+    // the pass: in the air until the catch; hands up as a target, then they take it in
+    if (P0.pass && t < P0.pass.t1) {
+      const C = this.catchPoint(), from = V(P0.pass.from.x, P0.pass.from.y, P0.pass.from.z);
+      const B = t <= P0.pass.t0 ? from : ballistic(from, C, P0.pass.t0, P0.pass.t1, t);
+      const toBall = from.clone().sub(C).setY(0).normalize();
+      const reach = smooth((t - (P0.pass.t1 - 0.5)) / 0.32);
+      const ov = this.grip(C.clone().addScaledVector(toBall, 0.07 * reach), t, 0.85 * reach);
+      return { B, state: 'pass', ov };
+    }
     const hold0 = P0.hold ? P0.hold[1] : -1;
     if (P0.hold && t < hold0) { const B = this.hipBall(t); return { B, state: 'held', ov: this.grip(B, t, 0.9) }; }
     if (P.length && t < P0.gatherAt) {
@@ -203,8 +281,8 @@ export class Rep {
       if (fl) return { B: t < fl.tb ? ballistic(fl.B0, fl.F, fl.r, fl.tb, t) : ballistic(fl.F, fl.B1, fl.tb, fl.c, t), state: 'dribble', ov: {} };
     }
     if (t < P0.release) {
-      // from the hip (or the last bounce) up into the shooting pocket, both hands on it
-      const from = P.length ? this.gatherBall(P0.gatherAt) : this.hipBall(Math.max(hold0, 0));
+      // into the hands at the gather (from the catch, the hip or the last bounce), then up with them
+      const from = P0.pass ? this.catchPoint() : (P.length ? this.gatherBall(P0.gatherAt) : this.hipBall(Math.max(hold0, 0)));
       const g = smooth((t - P0.gatherAt) / P0.gatherDur);
       const B = (t < P0.gatherAt ? this.hipBall(t) : from.clone()).lerp(this.holdBall(t), g);
       if (P0.layup && t > P0.layup.oneHand) { // last beat: the off hand comes away, the finishing hand carries it up
@@ -213,10 +291,27 @@ export class Rep {
         const ov = this.grip(B, t, 1); ov[s === 'R' ? 'L' : 'R'].w = 1 - u; ov[s].w = 1;
         return { B, state: 'held', ov };
       }
-      return { B, state: 'held', ov: this.grip(B, t, 1) };
+      if (P0.setAt !== undefined && t > P0.setAt - 0.15) {
+        // into the set: the ball comes off the two-hand hold onto the shooting hand, guide hand on its side
+        const u = smooth((t - (P0.setAt - 0.15)) / 0.15), sp = this.shotArm(t);
+        B.lerp(sp.B, u);
+        const ov = this.grip(B, t, 1 - u);
+        ov.R = { ...sp.R, w: u };
+        ov.L = this.guideArm(t, sp.B, u);
+        return { B, state: 'held', ov };
+      }
+      return { B, state: 'held', ov: this.grip(B, t, P0.pass ? 0.85 : 1) };
     }
-    const k = 1 - smooth((t - P0.release) / 0.1), ov = {};
-    if (k > 0) { const g = this.handsAndBall(P0.release - 1e-4).ov; for (const s of ['L', 'R']) if (g[s]) ov[s] = { ...g[s], w: g[s].w * k }; }
+    const ov = {};
+    if (P0.layup) {
+      const k = 1 - smooth((t - P0.release) / 0.1);
+      if (k > 0) { const g = this.handsAndBall(P0.release - 1e-4).ov; for (const s of ['L', 'R']) if (g[s]) ov[s] = { ...g[s], w: g[s].w * k }; }
+    } else {
+      // follow-through: arm still extended at the rim, wrist snapped down, guide hand up at the side, held until he
+      // lands, then the arms come down with the performer's own
+      const w = 1 - smooth((t - P0.land - 0.05) / 0.35);
+      if (w > 0) { const sp = this.shotArm(t); ov.R = { ...sp.R, w }; ov.L = { ...this.guideArm(t, sp.B, 1), w }; }
+    }
     return { ...(P0.layup ? this.layupBall(t) : this.shotBall(t)), ov };
   }
   dropAfter(t) {
@@ -232,7 +327,7 @@ export class Rep {
   }
   shotBall(t) {
     const P0 = this.plan;
-    if (!this._rel) { this._rel = this.holdBall(P0.release - 1e-4); this._rim = V(RIM.x + 0.01, RIM.y + 0.1, RIM.z + 0.02); }
+    if (!this._rel) { this._rel = this.shotArm(P0.release - 1e-4).B; this._rim = V(RIM.x + 0.01, RIM.y + 0.1, RIM.z + 0.02); }
     if (t < P0.rim) return { B: ballistic(this._rel, this._rim, P0.release, P0.rim, t), state: 'shot' };
     if (t < P0.netEnd) { const u = clamp((t - P0.rim) / (P0.netEnd - P0.rim), 0, 1); return { B: V(0.01 * (1 - u), RIM.y + 0.1 - 0.64 * (u * u * 0.5 + u * 0.5), 0.02 + 0.06 * u), state: 'net', netU: u }; }
     return this.dropAfter(t);
@@ -263,6 +358,7 @@ export class Rep {
         const d = r.B.clone().sub(prev); d.y = r.state === 'shot' ? d.y : 0;
         const len = Math.hypot(d.x, d.z);
         if (r.state === 'shot') { const fl = V(-this._rel.x, 0, -this._rel.z).normalize(), ax = V(fl.z, 0, -fl.x); q.premultiply(new THREE.Quaternion().setFromAxisAngle(ax, -2 * Math.PI * 2.2 / HZ)); }
+        else if (r.state === 'pass' && len > 1e-5) { const ax = new THREE.Vector3().crossVectors(UP, d).normalize(); q.premultiply(new THREE.Quaternion().setFromAxisAngle(ax, -2 * Math.PI * 1.5 / HZ)); }
         else if (r.state !== 'held' && len > 1e-5) { const ax = new THREE.Vector3().crossVectors(UP, d).normalize(); q.premultiply(new THREE.Quaternion().setFromAxisAngle(ax, len / BALL_R)); }
       }
       this.qTrack.push(q.clone()); prev = r.B;
@@ -302,10 +398,16 @@ export class Rep {
     }
     this.bal = out;
   }
-  // open: 0 = balanced and squared up (he can contest), 1 = his weight is going the wrong way (shoot / go now)
-  // (help defender at the rim: what matters is whether he's set - feet still, not moving - when you get there)
+  // open: 0 = balanced and squared up (he can contest), 1 = his weight is going the wrong way (shoot / go now).
+  // A closeout is read by phase (labels): sprinting, then chopping his feet, then set with a hand up. The help
+  // defender at the rim: what matters is whether he's set - feet still - when you get there.
   balance(t) {
-    const b = this.bal[clamp(Math.round(t * HZ), 0, this.bal.length - 1)];
+    const b = this.bal[clamp(Math.round(t * HZ), 0, this.bal.length - 1)], L = this.plan.labels;
+    if (L) {
+      let k = 0; while (k + 1 < L.length && L[k + 1].t <= t) k++;
+      const a = L[k], nx = L[k + 1], u = nx ? smooth((t - (nx.t - 0.12)) / 0.12) : 0;
+      return { ...b, heels: 0, lean: 0, open: a.open + ((nx ? nx.open : a.open) - a.open) * u, kind: a.kind };
+    }
     if (this.plan.contact) { const open = smooth((b.speed - 0.35) / 0.5); return { ...b, heels: 0, lean: 0, open, kind: open < 0.5 ? 'set' : 'notset' }; }
     const heels = Math.max(smooth((b.behind - 0.02) / 0.08), smooth((b.back - 0.3) / 0.4));
     const lean = Math.max(smooth((b.outside - 0.03) / 0.08), smooth((b.lat - 0.35) / 0.4));
@@ -317,21 +419,27 @@ export class Rep {
   youPose(t) {
     const P = this.tracks.you.at(t); this.contactOffset('you', P, t);
     const T = this.applyLock('you', P, t), hb = this.handsAndBall(t);
-    const d1 = this.tab('d1hip', t).add(V(0, 0.6, 0));
-    const u = this.plan.release !== undefined ? smooth((t - (this.plan.release - 0.6)) / 0.35) : 0;
-    return { T, opt: { handOverride: hb.ov, look: d1.lerp(RIM.clone(), u), lookW: 0.55 + 0.3 * u, curl: 0.3 } };
+    const d1 = this.tab('d1hip', t).add(V(0, 0.6, 0)), P0 = this.plan;
+    const target = P0.pass && t < P0.pass.t1 + 0.1 ? hb.B.clone() : d1;
+    const u = P0.release !== undefined ? smooth((t - (P0.release - 0.6)) / 0.35) : 0;
+    return { T, opt: { handOverride: hb.ov, look: target.lerp(RIM.clone(), u), lookW: 0.55 + 0.3 * u, curl: 0.3 } };
   }
+  // the contest: the near hand goes straight up (verticality), palm to the shooter, a touch toward him - never into
+  // the ball; the other arm stays down for balance
   d1Pose(t) {
     const P = this.tracks.d1.at(t); this.contactOffset('d1', P, t);
-    const T = this.applyLock('d1', P, t), b = this.handsAndBall(t).B, opt = { look: b, lookW: 0.5, curl: 0.3 }, c = this.plan.contest;
+    const T = this.applyLock('d1', P, t), b = this.handsAndBall(t).B, opt = { look: b, lookW: 0.55, curl: 0.3 }, c = this.plan.contest;
     if (c) {
-      const w = smooth((t - c.from) / 0.25) * (1 - smooth((t - c.to) / 0.4));
+      const w = smooth((t - c.from) / (c.rise ?? 0.25)) * (1 - smooth((t - c.to) / 0.4));
       if (w > 0) {
         opt.handOverride = {};
         for (const s of c.both ? ['L', 'R'] : [c.side || 'L']) {
           const sh = this.tab(s === 'L' ? 'd1shL' : 'd1shR', t), you = this.tab('hip', t), to = V(you.x - sh.x, 0, you.z - sh.z).normalize();
-          const pos = sh.clone().addScaledVector(UP, c.high ?? 0.56).addScaledVector(to, c.reach ?? 0.2);
-          opt.handOverride[s] = { pos, palm: to.clone(), dir: UP.clone().addScaledVector(to, 0.25).normalize(), pole: V(0, -1, 0).addScaledVector(to, -0.5).normalize(), curl: 0.1, w };
+          const out = V(-to.z, 0, to.x).multiplyScalar(s === 'L' ? -1 : 1);
+          const pos = sh.clone().addScaledVector(UP, this.armLen.d1 * 0.93).addScaledVector(to, c.reach ?? 0.1).addScaledVector(out, 0.04);
+          const hand = pos.clone().addScaledVector(UP, 0.1), gap = hand.distanceTo(b);
+          if (gap < 0.3) { const away = hand.clone().sub(b).setY(0); if (away.lengthSq() < 1e-6) away.copy(to).negate(); pos.addScaledVector(away.normalize(), 0.3 - gap); }
+          opt.handOverride[s] = { pos, palm: to.clone(), dir: UP.clone().addScaledVector(to, 0.12).normalize(), pole: out.clone().addScaledVector(to, -0.4).addScaledVector(UP, -0.3).normalize(), curl: 0.08, w };
         }
       }
     }

@@ -6,6 +6,8 @@ import { REP_TITLES } from './timeline5.js';
 
 const el = (tag, cls, html = '') => { const e = document.createElement(tag); if (cls) e.className = cls; e.innerHTML = html; return e; };
 const KIND = {
+  closing: ['CLOSING OUT', 'Sprinting at you'],
+  chop: ['CHOP STEPS', 'Breaking down under control'],
   balanced: ['BALANCED', 'He can still contest'],
   heels: ['ON HIS HEELS', 'Weight going back'],
   lean: ['LEANING', 'Hips outside his feet'],
@@ -35,9 +37,17 @@ export class Hud5 {
       const P = rep.plan, a = Math.min(...frames.filter(f => f.rep === name && !f.card).map(f => f.st)), b = P.release + (P.contact ? 0.25 : 0.35);
       const cv = document.createElement('canvas'); cv.width = 960; cv.height = 34; const g = cv.getContext('2d');
       for (let x = 0; x < 960; x++) { const [r, gg, bb] = mix(rep.balance(a + (x + 0.5) / 960 * (b - a)).open); g.fillStyle = `rgb(${r},${gg},${bb})`; g.fillRect(x, 0, 1, 34); }
+      // closest-defender distance at the release, in feet, banded like NBA tracking (0-2 very tight, 2-4 tight,
+      // 4-6 open, 6+ wide open)
+      let sepLabel = '', band = null;
+      if (!P.contact) {
+        const a = rep.frame('you', P.release).p, d = rep.frame('d1', P.release).p, ft = a.distanceTo(d) / 0.3048;
+        band = ft < 2 ? 'VERY TIGHT' : ft < 4 ? 'TIGHT' : ft < 6 ? 'OPEN' : 'WIDE OPEN';
+        sepLabel = `SHOT · ${ft.toFixed(1)} FT ${band}`;
+      }
       const marks = P.contact
         ? [{ t: P.contact.t, label: 'CONTACT' }, { t: P.release, label: 'LAYUP', minor: true }]
-        : [{ t: P.release, label: 'SHOT' }];
+        : [{ t: P.release, label: sepLabel, band }];
       this.R[name] = { a, b, cv, marks, states: this.debounce(rep) };
     }
     this.marks = [];
@@ -46,6 +56,7 @@ export class Hud5 {
   debounce(rep) {
     const out = [], dt = 1 / 120; let st = null, since = -1;
     for (let t = 0; t <= rep.plan.simEnd + 1e-6; t += dt) {
+      if (rep.plan.labels) { out.push(rep.balance(t).kind); continue; }
       const b = rep.balance(t), closedKind = rep.plan.contact ? 'set' : 'balanced';
       const openKind = rep.plan.read || (b.kind === closedKind ? (rep.plan.contact ? 'notset' : 'heels') : b.kind);
       if (!st) st = b.open > 0.5 ? openKind : closedKind;
@@ -74,7 +85,8 @@ export class Hud5 {
       const e = el('div', 'mk' + (m.minor ? ' minor' : ''), `<span>${m.label}</span>`), x = (m.t - R.a) / (R.b - R.a) * 960;
       e.style.left = x + 'px';
       const open = rep.balance(m.t).open;
-      if (!m.minor) { const s = e.querySelector('span'); s.style.background = open >= 0.5 ? 'var(--green)' : 'var(--red)'; s.style.color = open >= 0.5 ? '#04150a' : '#fff'; }
+      const good = m.band ? (m.band === 'WIDE OPEN' || m.band === 'OPEN') : open >= 0.5;
+      if (!m.minor) { const s = e.querySelector('span'); s.style.background = good ? 'var(--green)' : 'var(--red)'; s.style.color = good ? '#04150a' : '#fff'; if (m.band) e.classList.add('right'); }
       bar.appendChild(e); return { ...m, e };
     });
     if (!this.ph) { this.ph = el('div', 'ph'); bar.appendChild(this.ph); }
@@ -91,9 +103,11 @@ export class Hud5 {
         this.cardKind = k;
         this.card.innerHTML = k === 'intro'
           ? `<div class="k">FILM ROOM</div><div class="h">READ HIS<br>WEIGHT</div><div class="s">When to shoot · when to finish through contact</div>
+             <div class="stat"><div class="n">27.5%</div><div class="l">NBA pull-up 3s with the closest<br>defender 2-4 ft away</div><div class="n g">36.3%</div><div class="l">with him 6+ ft away</div></div>
              <div class="list"><div>1 · Contested make</div><div>2 · On his heels</div><div>3 · On the lean</div><div>4 · Contact finish</div></div>
-             <div class="key">Ring on the floor = his feet<br>Arrow = where his weight is going<br><b class="r">Red</b>: he can contest · <b class="g">Green</b>: go</div>`
-          : `<div class="big">Shoot when his<br>weight is <em>wrong.</em></div><div class="big" style="margin-top:60px">Finish <em>through</em><br>him before<br>he's set.</div>`;
+             <div class="key">Ring on the floor = his feet · Arrow = where his weight is going<br><b class="r">Red</b>: he can contest · <b class="g">Green</b>: go</div>`
+          : `<div class="big">Shoot when his<br>weight is <em>wrong.</em></div><div class="big" style="margin-top:60px">Finish <em>through</em><br>him before<br>he's set.</div>
+             <div class="src">Stats: NBA.com player tracking, 2024-25 regular season · Rules: NBA Official Playing Rules 2025-26,<br>Comments on the Rules II.C · Timing: Vater 2024 (Sci Rep), Dos'Santos et al. 2018 (Sports Med)</div>`;
       }
       const o = k === 'intro' ? 1 - smooth((e - (S.v1 - S.v0 - 0.35)) / 0.35) : smooth(e / 0.4);
       this.card.style.opacity = String(o);
@@ -112,7 +126,8 @@ export class Hud5 {
     else this.mode.style.opacity = '0';
     // his state right now, in the panel over the strip (held through the rim shots)
     const kind = this.stateAt(fr.rep, Math.min(st, P.contact ? P.contact.t : P.release)), [txt, sub] = KIND[kind], open = kind !== 'balanced' && kind !== 'set';
-    const pill = this.strip.querySelector('.pill'); pill.textContent = txt; pill.classList.toggle('open', open);
+    const warn = kind === 'closing' || kind === 'chop';
+    const pill = this.strip.querySelector('.pill'); pill.textContent = txt; pill.classList.toggle('open', open && !warn); pill.classList.toggle('warn', warn);
     this.strip.querySelector('.sub').textContent = sub;
     // contact burst: two rings punching out from where his shoulder meets the defender's chest
     const hu = P.contact && hitAt && hitAt.visible && !fr.freeze ? (st - P.contact.t) / 0.4 : -1;

@@ -1,6 +1,6 @@
 // v5 cameras (portrait). duel: three-quarter view of the shooter and his defender, wide enough to keep the
-// defender's feet and the floor meter in frame; rim: beside the rim for the result; finish: from the weak side of the
-// lane for the drive, the contact and the layup. Smoothed per rep with a critically damped follow and a look-ahead.
+// defender's feet and the floor meter in frame; rim: beside the rim for the result; finish: from the baseline for the
+// drive, the contact and the layup. Smoothed per rep with a critically damped follow and a look-ahead.
 import * as THREE from 'three';
 import { smooth, clamp } from './motion.js';
 
@@ -15,14 +15,18 @@ export class Cam5 {
   ideal(rep, mode, t) {
     const y = rep.frame('you', t).p, d = rep.frame('d1', t).p;
     if (mode === 'duel') {
-      // three-quarter view from the sideline side (camAngle swings it round behind the shooter), just under head
-      // height, pulled back to keep both of them in the narrow frame, tilted so their feet sit at the same place
-      // on screen whatever the distance (above the timing strip, with the floor meter in view)
+      // three-quarter view from one side (camAngle swings it round behind the shooter), just under head height,
+      // pulled back to keep both of them in the narrow frame, tilted so their feet sit at the same place on screen
+      // whatever the distance (above the timing strip, with the floor meter in view). The side is fixed per rep
+      // from the line between them at camRef, so the camera never swings across them when the defender slides.
       const A = rep.plan.camAngle ?? 0.6, HC = 1.75, FEET = 14.3 * Math.PI / 180;
-      const mid = y.clone().lerp(d, 0.5), line = d.clone().sub(y); const sep = line.length(); line.normalize();
-      let n = V(-line.z, 0, line.x); if (n.x < 0) n.negate();          // the sideline side
-      const back = line.clone().negate(), dir = n.clone().multiplyScalar(Math.cos(A)).addScaledVector(back, Math.sin(A)).normalize();
-      const dist = Math.max(4.1, (sep * Math.cos(A) + 1.5) / 0.573);
+      if (!rep._camDir) {
+        const tr = rep.plan.camRef ?? rep.plan.release, y0 = rep.frame('you', tr).p, d0 = rep.frame('d1', tr).p, l0 = d0.clone().sub(y0).normalize();
+        let n = V(-l0.z, 0, l0.x); if (n.x < 0) n.negate();
+        rep._camDir = n.multiplyScalar(Math.cos(A)).addScaledVector(l0.clone().negate(), Math.sin(A)).normalize();
+      }
+      const dir = rep._camDir, mid = y.clone().lerp(d, 0.5), across = Math.abs(d.clone().sub(y).dot(V(-dir.z, 0, dir.x)));
+      const dist = Math.max(4.1, (across + 1.5) / 0.573);
       const pos = mid.clone().addScaledVector(dir, dist); pos.y = HC;
       const look = mid.clone(); look.y = HC - dist * Math.tan(Math.atan(HC / dist) - FEET);
       return { pos, look, fov: 54 };
@@ -35,13 +39,13 @@ export class Cam5 {
       const look = RIM.clone().add(V(0, -0.3, 0)).addScaledVector(s, 0.25);
       return { pos, look, fov: 54 };
     }
-    // finish: low on the weak side of the lane, facing the drive: he comes at the camera, the help defender slides in
-    // from the right and meets his left shoulder side-on; after the contact it pans up to the rim for the finish
-    // (tight on the setup while they're far away, widening as the drive comes in)
-    const c = rep.plan.contact, pos = V(-3.1, 1.65, 1.5);
-    const mid = y.clone().lerp(d, 0.5); mid.y = 1.25;
+    // finish: from the baseline, low, just right of the stanchion and facing up the lane: he drives at the camera, the help
+    // defender slides in from the side and takes the shoulder side-on; after the contact it tilts up to the glass.
+    // Tight on the setup while they're far away, widening as the drive comes in.
+    const c = rep.plan.contact, pos = V(1.25, 1.45, -3.05);
+    const mid = y.clone().lerp(d, 0.5); mid.y = 1.2;
     const u = smooth((t - (c.t + 0.05)) / (rep.plan.release + 0.15 - c.t));
-    return { pos, look: mid.lerp(V(0.2, 2.2, 0.3), u), fov: 42 + 16 * smooth((t - 0.4) / (c.t - 0.4)) };
+    return { pos, look: mid.lerp(V(0.5, 2.3, 0.35), u), fov: 48 + 10 * smooth((t - 0.3) / (c.t - 0.3)) + 4 * u };
   }
   bake(rep, mode) {
     const dt = 1 / 240, lead = mode === 'duel' ? 0.3 : 0.2, track = [], end = rep.plan.simEnd, wp = mode === 'duel' ? 3.2 : 2.2, wl = { duel: 4.2, rim: 3.4, finish: 5.5 }[mode];

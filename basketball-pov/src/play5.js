@@ -1,90 +1,116 @@
-// v5 "read his weight": four reps on the right wing, each its own pair of mocap tracks (sim time starts at 0).
-//  1 contested make  - he's balanced, you rise anyway: he contests, it drops, still the wrong time
-//  2 on his heels    - hard drive, he retreats; pull up while his weight is still going back
-//  3 on the lean     - jab, his hips go outside his feet; rise before he re-plants
-//  4 contact finish  - drive, he walls up at the rim; hit him first, absorb, finish off the glass
-// Court: rim at (0,0), offense attacks -z (as in play3.js).
+// v5 "read his weight": four reps on the right side of the floor, each built from whole real takes (CMU mocap)
+// cut together where the poses match (tools/transit.py) with inertialized transitions:
+//  1 contested make  - catch and shoot (124_05) into a controlled closeout (78_25): he arrives balanced, contests
+//  2 on his heels    - hard first step (78_32) into a pull-up (124_05) while he's still dropping back (78_28)
+//  3 on the lean     - crossover dribble (06_14) into a pull-up (124_05) while he's still sliding (78_30)
+//  4 contact finish  - drive (78_32) into a layup (124_06) through a help defender who isn't set (78_26)
+// Players are placed by anchoring a moment of each take to a spot on the floor (hip position and facing), so the
+// spacing is set where it matters (the release, the contact) and everything else follows from the real motion.
+// Court: rim at (0,0), offense attacks -z.
+import * as THREE from 'three';
 import { Track } from './animator.js';
+import { sampleClip, facingYaw } from './mocap.js';
 
-const deg = Math.PI / 180;
 export const RIM = { x: 0, z: 0 };
-export const CLIPS5 = ['78_22', '78_32', '78_20', '06_15', '124_06', '78_30', '78_28', '78_26'];
+export const CLIPS5 = ['124_05', '124_06', '06_14', '78_25', '78_26', '78_28', '78_30', '78_32'];
 const yawTo = (p, q) => Math.atan2(q.x - p.x, q.z - p.z);
-const toward = (p, q, d) => { const a = yawTo(p, q); return { x: p.x + Math.sin(a) * d, z: p.z + Math.cos(a) * d }; };
-// 06_15 turns left as he rises; he should face the rim at the gather (clip 1.55), so a segment that starts at clip
-// time `from` is placed this much right of the rim line (measured from the clip's hip yaw)
-const TURN = [[1.9, 24], [2.0, 30], [2.1, 35], [2.2, 37], [2.3, 37]];
-const JUMPER_TURN = (from) => {
-  for (let i = 0; i + 1 < TURN.length; i++) if (from <= TURN[i + 1][0]) { const [a, x] = TURN[i], [b, y] = TURN[i + 1]; return (x + (y - x) * (from - a) / (b - a)) * deg; }
-  return 37 * deg;
-};
+const wrap = (a) => { while (a > Math.PI) a -= 2 * Math.PI; while (a < -Math.PI) a += 2 * Math.PI; return a; };
 
-export const SPOT = { x: 2.3, z: 7.3 };
+// Build a track whose first segment is placed so that at sim time tRef the hip is at want.{x,z} facing want.yaw.
+// Later segments continue from the earlier ones, so a rigid move of the first placement moves the whole track.
+export function anchoredTrack(clips, segs, leg, tRef, want) {
+  const trial = new Track(clips, segs.map((s, i) => i ? { ...s } : { ...s, place: { x: 0, z: 0, yaw: 0 } }), leg);
+  const T = trial.at(tRef), h = trial.hip(tRef), a = wrap(want.yaw - T.yaw);
+  const r = new THREE.Vector3(h.x, 0, h.z).applyAxisAngle(new THREE.Vector3(0, 1, 0), a);
+  return new Track(clips, segs.map((s, i) => i ? { ...s } : { ...s, place: { x: want.x - r.x, z: want.z - r.z, yaw: a } }), leg);
+}
+const clipYaw = (clip, ct) => facingYaw(sampleClip(clip, ct));
+
 export const REPS = {
+  // 1 - catch on the wing (kick-out from the corner) as the defender closes out from the lane; he chops his feet,
+  // arrives balanced with his hand up, and the shot goes up over it anyway
   contested: {
-    simEnd: 4.4,
-    you: () => [
-      { clip: '78_22', from: 0.3, at: 0, place: { ...SPOT, yaw: yawTo(SPOT, RIM) } },
-      { clip: '06_15', from: 2.1, at: 1.2, blend: 0.3, shot: true, yawAbs: (p) => yawTo(p, RIM) + JUMPER_TURN(2.1) },
-    ],
-    d1: (youAt) => { const s = toward(SPOT, RIM, 1.05); return [
-      { clip: '78_30', from: 3.93, at: 0, idle: { amp: 0.16, period: 1.7 }, place: { ...s, yaw: yawTo(s, SPOT) } },
-    ]; },
-    plan: { hold: [0, 1.3], gatherAt: 1.22, gatherDur: 0.3, shotClip: 2.8, flight: 1.22, contest: { from: 1.6, to: 2.55, side: 'L', high: 0.74, reach: 0.14 } },
+    simEnd: 4.0,
+    plan: { pass: { from: { x: 6.4, y: 1.45, z: 1.6 }, t0: -0.35, t1: 0.4 }, gatherAt: 0.4, gatherDur: 0.2, shotClip: 3.38, flight: 1.2, camRef: 1.2,
+      contest: { from: 1.16, rise: 0.28, to: 2.4, side: 'L', reach: 0.12 },
+      labels: [{ t: 0, kind: 'closing', open: 0.55 }, { t: 0.62, kind: 'chop', open: 0.3 }, { t: 0.86, kind: 'balanced', open: 0 }] },
+    build(clips, legs) {
+      const SPOT = { x: 3.0, z: 6.95 }; // a step behind the arc on the right wing
+      // shooter: 124_05 from the moment before the catch; the air turn is taken out so he lands where he took off
+      const you = anchoredTrack(clips, [{ clip: '124_05', from: 1.92, at: 0, shot: true, unwind: { from: 3.17, to: 3.72, ramp: 0.08 } }],
+        legs.you, 3.17 - 1.92, { ...SPOT, yaw: yawTo(SPOT, RIM) });
+      // the kick-out comes from where he's facing at the catch (the corner), chest high, ~5 m away
+      { const c = you.hip(0.4), f = you.at(0.4).yaw; REPS.contested.plan.pass.from = { x: c.x + Math.sin(f) * 5.2, y: 1.4, z: c.z + Math.cos(f) * 5.2 }; }
+      // closeout: anchored at the stop (clip 2.05): a metre in front of him on the rim side, square to him
+      // (timed so he stands up out of his stance - the clip's own rise - into the contest as the shooter goes up)
+      const tStop = 0.88, h = you.hip(tStop), dir = Math.atan2(RIM.x - h.x, RIM.z - h.z);
+      const stop = { x: h.x + Math.sin(dir) * 1.32, z: h.z + Math.cos(dir) * 1.32 };
+      const d1 = anchoredTrack(clips, [{ clip: '78_25', from: 2.05 - tStop, at: 0 },
+        { clip: '78_25', from: 2.78, at: 2.78 - (2.05 - tStop), inert: 0.2, idle: { amp: 0.16, period: 2.2 } }], legs.d1, tStop, { ...stop, yaw: yawTo(stop, h) });
+      return { you, d1 };
+    },
   },
+  // 2 - hard first step at him; he drops back to stay in front; pull up while he's still going backwards
   heels: {
-    simEnd: 4.6,
-    you: () => [
-      { clip: '78_22', from: 0.3, at: 0, place: { ...SPOT, yaw: yawTo(SPOT, RIM) } },
-      { clip: '78_32', from: 0.25, at: 0.7, blend: 0.25, yawAbs: (p) => yawTo(p, RIM) - 32 * deg },
-      { clip: '06_15', from: 2.3, at: 1.12, blend: 0.28, shot: true, yawAbs: (p) => yawTo(p, RIM) + JUMPER_TURN(2.3) },
-    ],
-    d1: (youAt) => { const s = toward(SPOT, RIM, 1.15); return [
-      { clip: '78_30', from: 3.93, at: 0, idle: { amp: 0.16, period: 1.7 }, place: { ...s, yaw: yawTo(s, SPOT) } },
-      // drops left-back to shadow the drive, then keeps drifting straight back after the ball handler has stopped
-      { clip: '78_28', from: 0.45, at: 0.86, blend: 0.2, yawAbs: (p, t) => yawTo(p, youAt(t)) + 10 * deg },
-      { clip: '78_30', from: 3.93, at: 2.35, blend: 0.45, idle: { amp: 0.12, period: 1.9 }, yawAbs: (p, t) => yawTo(p, youAt(t)) },
-    ]; },
-    plan: { read: 'heels', hold: [0, 0.78], dribble: [0.78, 1.08], gatherAt: 1.1, gatherDur: 0.26, shotClip: 2.8, flight: 1.15, contest: { from: 1.75, to: 2.4, side: 'L', high: 0.5, reach: 0.15 } },
+    simEnd: 4.2,
+    plan: { hold: [0, 0.05], dribble: [0.05, 0.5], gatherAt: 0.5, gatherDur: 0.22, shotClip: 3.38, flight: 1.2, read: 'heels', camRef: 0.6,
+      contest: { from: 1.25, rise: 0.35, to: 2.3, side: 'L', reach: 0.08, late: true } },
+    build(clips, legs) {
+      const segs = [{ clip: '78_32', from: 0.0, at: 0 },
+        { clip: '124_05', from: 2.70, at: 0.517, inert: 0.3, shot: true, unwind: { from: 3.17, to: 3.72, ramp: 0.08 } }];
+      const tOff = 0.517 + (3.17 - 2.70), SPOT = { x: 2.75, z: 7.05 };
+      const you = anchoredTrack(clips, segs, legs.you, tOff, { ...SPOT, yaw: yawTo(SPOT, RIM) });
+      // the retreat: 78_28 drop-steps and runs back at an angle, hips open 45 degrees to the drive, so it goes straight
+      // away from the ball (fitted: ~1.6 m/s backwards from the first step to the takeoff, 1.65 m off at the takeoff)
+      const h = you.hip(tOff), dir = Math.atan2(RIM.x - h.x, RIM.z - h.z), tRef = tOff;
+      const at = { x: h.x + Math.sin(dir - 0.25) * 1.65, z: h.z + Math.cos(dir - 0.25) * 1.65 };
+      // ...then plants (78_30's stop, matched to the retreat at 0.9 s) - too late to get a hand up in time
+      const d1 = anchoredTrack(clips, [{ clip: '78_28', from: 0.12, at: 0, rate: 0.85 },
+        { clip: '78_30', from: 2.067, at: (0.9 - 0.12) / 0.85, inert: 0.25 }], legs.d1, tRef, { ...at, yaw: yawTo(at, h) + Math.PI / 4 });
+      return { you, d1 };
+    },
   },
+  // 3 - crossover, he slides hard with it; stop and rise while his momentum is still carrying him sideways
   lean: {
     simEnd: 4.4,
-    you: () => [
-      { clip: '78_22', from: 0.3, at: 0, place: { ...SPOT, yaw: yawTo(SPOT, RIM) } },
-      { clip: '78_20', from: 0.38, at: 0.55, blend: 0.2, yawAbs: (p) => yawTo(p, RIM) + 35 * deg },
-      { clip: '06_15', from: 2.3, at: 0.95, blend: 0.28, shot: true, yawAbs: (p) => yawTo(p, RIM) + JUMPER_TURN(2.3) },
-    ],
-    d1: (youAt) => { const s = toward(SPOT, RIM, 1.1); return [
-      { clip: '78_30', from: 3.93, at: 0, idle: { amp: 0.16, period: 1.7 }, place: { ...s, yaw: yawTo(s, SPOT) } },
-      // bites on the jab: slides with it, hips going out over his feet
-      { clip: '78_30', from: 0.25, at: 0.8, blend: 0.2, yawAbs: (p, t) => yawTo(p, youAt(t)) },
-    ]; },
-    plan: { read: 'lean', camAngle: 1.1, hold: [0, 1.0], gatherAt: 0.96, gatherDur: 0.28, shotClip: 2.8, flight: 1.2, contest: { from: 1.6, to: 2.3, side: 'R', high: 0.45, reach: 0.12 } },
+    plan: { dribble: [0, 1.15], gatherAt: 1.16, gatherDur: 0.22, shotClip: 3.38, flight: 1.2, read: 'lean', camRef: 1.05, camAngle: 1.15,
+      contest: { from: 1.95, rise: 0.35, to: 2.7, side: 'R', reach: 0.05, late: true } },
+    build(clips, legs) {
+      const segs = [{ clip: '06_14', from: 0.0, at: 0 },
+        { clip: '124_05', from: 2.60, at: 1.20, inert: 0.3, shot: true, unwind: { from: 3.17, to: 3.72, ramp: 0.08 } }];
+      const tOff = 1.20 + (3.17 - 2.60), SPOT = { x: 2.95, z: 6.95 };
+      const you = anchoredTrack(clips, segs, legs.you, tOff, { ...SPOT, yaw: yawTo(SPOT, RIM) });
+      // the slide: 78_30's first slide (to his right), the stop and the push back, timed off the cross back
+      // he guards the dribble square (the dribbler faces the baseline side; the turn into the shot comes later):
+      // his first slide answers the first cross, the second, harder one carries him past as you stop and rise
+      // (fitted so both slides run across his front - not at him - and leave him ~1.9 m off at the release)
+      const tRef = 1.05, h0 = you.hip(tRef), f0 = you.at(tRef).yaw - 40 * Math.PI / 180;
+      const at = { x: h0.x + Math.sin(f0) * 1.6, z: h0.z + Math.cos(f0) * 1.6 };
+      const d1 = anchoredTrack(clips, [{ clip: '78_30', from: 0.0, at: 0 }], legs.d1, tRef, { ...at, yaw: yawTo(at, h0) - 40 * Math.PI / 180 });
+      return { you, d1 };
+    },
   },
+  // 4 - drive baseline side, the help defender slides over from the lane and is still moving when the shoulder
+  // gets to him; finish off the glass through the contact
   contact: {
-    simEnd: 4.2,
-    // start spots solved by tools/fitcontact5.mjs: release about a metre off the rim on the right side; the help
-    // defender, still sliding, meets the finisher's left shoulder at the take-off
-    you: (F = CONTACT_FIT) => [
-      { clip: '78_32', from: 0.05, at: 0, place: { x: F.you.x, z: F.you.z, yaw: yawTo(F.you, F.aim) } },
-      { clip: '124_06', from: 2.55, at: 1.0, blend: 0.3, shot: true, yawAbs: (p) => yawTo(p, F.aim2) },
-    ],
-    d1: (youAt, F = CONTACT_FIT) => [
-      { clip: '78_30', from: 3.93, at: 0, idle: { amp: 0.16, period: 1.7 }, place: { x: F.d1.x, z: F.d1.z, yaw: F.d1Yaw } },
-      // rotates over from the lane (78_26: run, then a hard stop with his weight back) and is still braking when
-      // the finisher's shoulder arrives
-      { clip: '78_26', from: 0.9, at: 0.75, blend: 0.2, yawAbs: () => F.runYaw },
-    ],
-    plan: { dribble: [0, 0.95], gatherAt: 1.08, gatherDur: 0.25, layup: { releaseClip: 3.36, side: 'R', oneHand: 1.62 }, contest: { from: 1.15, to: 2.4, both: true, high: 0.72, reach: 0.05 },
-      contact: { t: 1.45, push: 0.2, you: 0.07 } },
+    simEnd: 4.0,
+    plan: { dribble: [0, 1.0], gatherAt: 1.05, gatherDur: 0.22, layup: { releaseClip: 3.36, side: 'R', oneHand: 1.62 },
+      contest: { from: 1.2, rise: 0.25, to: 2.3, both: true, reach: 0.05 }, contact: { t: 1.38, push: 0.2, you: 0.07 } },
+    build(clips, legs) {
+      const segs = [{ clip: '78_32', from: 0.0, at: 0 },
+        { clip: '124_06', from: 2.633, at: 1.05, inert: 0.25, shot: true, unwind: { from: 3.02, to: 3.85, ramp: 0.12, k: 0.85 } }];
+      const tTake = 1.05 + (3.02 - 2.633), TAKE = { x: 0.95, z: 0.95 };
+      const you = anchoredTrack(clips, segs, legs.you, tTake, { ...TAKE, yaw: yawTo(TAKE, { x: 0.25, z: 0.05 }) });
+      // help: 78_26 sprints over and breaks down; anchored so that at the contact he is at the driver's left
+      // shoulder, a step up the lane, facing him
+      const c = REPS.contact.plan.contact.t, h = you.hip(c), f = you.at(c).yaw;
+      const left = { x: Math.cos(f), z: -Math.sin(f) }, fw = { x: Math.sin(f), z: Math.cos(f) };
+      const at = { x: h.x + left.x * 0.48 + fw.x * 0.22, z: h.z + left.z * 0.48 + fw.z * 0.22 };
+      const d1 = anchoredTrack(clips, [{ clip: '78_26', from: 1.5 - c, at: 0 }], legs.d1, c, { ...at, yaw: yawTo(at, h) });
+      return { you, d1 };
+    },
   },
 };
-export const CONTACT_FIT = {"you":{"x":4.25,"z":2.841},"aim":{"x":1.225,"z":0.021},"aim2":{"x":0.5,"z":0.2},"d1":{"x":1.761,"z":3.415},"d1Yaw":2.108,"runYaw":2.594};
 
-export function buildRep(name, clips, legs, fit) {
-  const R = REPS[name];
-  const you = new Track(clips, fit ? R.you(fit) : R.you(), legs.you);
-  const youAt = (t) => { const h = you.hip(t); return { x: h.x, z: h.z }; };
-  const d1 = new Track(clips, fit ? R.d1(youAt, fit) : R.d1(youAt), legs.d1);
-  return { you, d1 };
-}
+export function buildRep(name, clips, legs) { return REPS[name].build(clips, legs); }
+export { clipYaw };
