@@ -1,9 +1,11 @@
 {
   "name": "basketball-pov",
   "version": "1.0.0",
-  "description": "2K-style and phone-style basketball clips (three.js, rendered headless to MP4) driven by real motion capture: v4 is anatomical skeletons in a practice gym, v3 a tweener-cross-cross step-back three from the side, v2 a behind-the-player 1v1 breakdown.",
+  "description": "2K-style and phone-style basketball clips (three.js, rendered headless to MP4) driven by real motion capture: v5 is a film-room clip on reading a defender's weight (when to shoot, contact finishes), v4 anatomical skeletons in a practice gym, v3 a tweener-cross-cross step-back three from the side, v2 a behind-the-player 1v1 breakdown.",
   "scripts": {
     "assets": "bash tools/fetch_assets.sh",
+    "render:v5": "node tools/events2.mjs src/index5.html out/events5.json && python3 tools/audio_gym.py out/events5.json out/audio5.wav && node tools/render.mjs --page src/index5.html --viewport 1080x1920 --size 1080x1920 --crf 23 --out out/read_his_weight_silent.mp4 --workers 3 && bash tools/mux.sh out/read_his_weight_silent.mp4 out/audio5.wav out/read_his_weight.mp4",
+    "preview:v5": "node tools/render.mjs --page src/index5.html --q 'half&sub=1' --viewport 1080x1920 --size 540x960 --step 2 --workers 3 --out out/preview_v5.mp4",
     "render:v4": "node tools/events2.mjs src/index4.html out/events4.json && python3 tools/audio_gym.py out/events4.json out/audio4.wav && node tools/render.mjs --page src/index4.html --viewport 1080x1920 --size 1080x1920 --crf 23 --out out/skeleton_gym_silent.mp4 --workers 3 && bash tools/mux.sh out/skeleton_gym_silent.mp4 out/audio4.wav out/skeleton_gym.mp4",
     "preview:v4": "node tools/render.mjs --page src/index4.html --q 'half&sub=2' --viewport 1080x1920 --size 540x960 --step 2 --workers 3 --out out/preview_v4.mp4",
     "render:v3": "node tools/events2.mjs src/index3.html out/events3.json && python3 tools/audio.py out/events3.json out/audio3.wav && node tools/render.mjs --page src/index3.html --out out/tweener_silent.mp4 --workers 3 && bash tools/mux.sh out/tweener_silent.mp4 out/audio3.wav out/tweener.mp4",

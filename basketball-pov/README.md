@@ -2,7 +2,8 @@
 
 2K-style gameplay clips and breakdowns, rendered from three.js and driven by real motion capture.
 
-- **v4 (latest): skeletons hooping in a practice gym, shot like a phone clip.** [`out/skeleton_gym.mp4`](out/skeleton_gym.mp4) (1080×1920 portrait, 30 fps, H.264 + AAC)
+- **v5 (latest): film room, "Read his weight".** When to shoot, when not to, and how to finish through contact, with the skeletons in the gym. [`out/read_his_weight.mp4`](out/read_his_weight.mp4) (1080×1920 portrait, 30 fps, H.264 + AAC)
+- v4: skeletons hooping in a practice gym, shot like a phone clip. [`out/skeleton_gym.mp4`](out/skeleton_gym.mp4) (1080×1920 portrait, 30 fps, H.264 + AAC)
 - v3: tweener, cross, cross, step-back three, from the side. [`out/tweener.mp4`](out/tweener.mp4) (1920×1080, 60 fps, H.264 + AAC)
   - Skeleton version: [`out/tweener_skeleton.mp4`](out/tweener_skeleton.mp4). It's the same play and motion, with the players drawn as their skeletons instead of the 3D models (`src/index3.html?skel`).
 - v2: 1-on-1 against a square defender, shot from behind the ball handler. [`out/1v1_pov.mp4`](out/1v1_pov.mp4) (1920×1080, 60 fps, H.264 + AAC)
@@ -21,6 +22,42 @@ It writes three files:
 - `clip_overlay.mp4`: the footage with the tracked skeleton drawn on it.
 - `clip_pose.mp4`: the skeleton alone on black, the pose-reference format that AI video tools take.
 - `clip.json`: per-frame 2D image landmarks with visibility, plus 3D world landmarks in metres around the hips.
+
+## v5: what it shows
+
+A film-room breakdown on reading the defender's weight. Each rep plays near full speed into the read, freezes on the
+coaching point, plays the rise in slow motion and cuts to the rim for the result.
+
+| Rep | The read |
+|---|---|
+| 1 · Contested make | He's balanced, weight on his toes. You rise anyway, he gets a hand up, and it drops. It went in, but it was still the wrong time to shoot. |
+| 2 · On his heels | A hard drive pushes him back. You pull up while his weight is still going away from you, so he can't jump back toward you. |
+| 3 · On the lean | A jab. He bites and his hips go outside his feet. You rise before he re-plants. |
+| 4 · Contact finish | The help defender slides over but isn't set. Hit him first, absorb it, keep the ball high and away from him, and finish off the glass for the and-one. |
+
+On screen:
+
+- **Floor meter** under the defender: a ring around his feet, and an arrow from his centre of mass to where his momentum is taking it. It's red while that point stays inside his feet (he can still contest), and green once it leaves them (on his heels, leaning, or not set).
+- **Weight panel** at the bottom: his state right now, and a timing strip of his balance over the rep. The strip is revealed as the rep plays, with the shot (or the contact) marked on it. A shot over red was contested; a shot over green came in the window.
+- Freeze frames with the coaching point, a slow-motion tag, rep titles, and a burst where the shoulder meets his chest.
+
+## How v5 is made
+
+- **Reps:** `src/play5.js`. Each rep is its own pair of CMU mocap tracks: shot fake and jab (78_22, 78_20), drive (78_32), dribble jumper (06_15) and layup (124_06) for the ball handler; stance, retreat, slide and run-stop (78_30, 78_28, 78_26) for the defender.
+  - `node tools/geom5.mjs <rep>` prints spacing, facing and the defender's balance through a rep.
+  - `node tools/fitcontact5.mjs` solves the start spots so the help defender meets the finisher's left shoulder at the take-off.
+- **Balance:** `src/rep5.js`. The defender's centre of mass comes from his hips, thorax, head and thighs. The extrapolated centre of mass (XcoM = CoM + v/ω₀, ω₀ = √(g/l)) is where his momentum carries it.
+  - On his heels: the XcoM is behind every point of his feet, away from the shooter.
+  - Leaning: the XcoM is outside his feet sideways.
+  - A help defender is set once he has stopped moving.
+- **Ball, hands and contact:** also `src/rep5.js`. It handles the triple threat, dribbles found in the source hands, the gather, and the jumper's arc or the layup off the glass. It also drives the defender's contest arm and the shove at the contact (his upper body knocked back, the finisher absorbing it).
+- **Overlays and edit:**
+  - `src/meter5.js`: the floor meter.
+  - `src/hud5.js` and `src/hud5.css`: titles, captions, the weight panel, the contact burst and the cards.
+  - `src/timeline5.js`: the edit.
+  - `src/camera5.js`: a three-quarter view per rep, a camera beside the rim, and a weak-side view for the finish.
+- **Rendering:** `src/main5.js`, with the same skeletons, gym and motion blur as v4 (2 sub-frames). A freeze is rendered once and only re-graded for its other frames.
+- **Audio:** `tools/audio_gym.py`, now with the glass, the body contact, the whistle and a freeze accent.
 
 ## v4: what it shows
 
@@ -104,6 +141,8 @@ A right-wing isolation with the clock running out and your team down two.
 npm install
 pip install pillow numpy scipy imageio-ffmpeg trimesh networkx mediapipe
 npm run assets      # Rocketbox models + uniforms, CMU mocap clips
+npm run preview:v5  # quick 540x960 check of v5
+npm run render:v5   # final 1080x1920 v5 with audio -> out/read_his_weight.mp4
 npm run preview:v4  # quick 540x960 check of v4
 npm run render:v4   # final 1080x1920 v4 with audio -> out/skeleton_gym.mp4
 npm run preview:v3  # quick 540p check of v3

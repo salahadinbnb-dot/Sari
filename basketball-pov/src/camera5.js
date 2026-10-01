@@ -36,14 +36,15 @@ export class Cam5 {
       return { pos, look, fov: 54 };
     }
     // finish: low on the weak side of the lane, facing the drive: he comes at the camera, the help defender slides in
-    // from the right and meets his left shoulder side-on; the pan settles between the contact and the rim for the finish
+    // from the right and meets his left shoulder side-on; after the contact it pans up to the rim for the finish
+    // (tight on the setup while they're far away, widening as the drive comes in)
     const c = rep.plan.contact, pos = V(-3.1, 1.65, 1.5);
     const mid = y.clone().lerp(d, 0.5); mid.y = 1.25;
-    const u = smooth((t - 0.7) / (c.t + 0.15 - 0.7));
-    return { pos, look: mid.lerp(V(0.55, 1.95, 0.55), u), fov: 58 };
+    const u = smooth((t - (c.t + 0.05)) / (rep.plan.release + 0.15 - c.t));
+    return { pos, look: mid.lerp(V(0.2, 2.2, 0.3), u), fov: 42 + 16 * smooth((t - 0.4) / (c.t - 0.4)) };
   }
   bake(rep, mode) {
-    const dt = 1 / 240, lead = mode === 'duel' ? 0.3 : 0.2, track = [], end = rep.plan.simEnd, wp = mode === 'duel' ? 3.2 : 2.2, wl = mode === 'duel' ? 4.2 : 3.4;
+    const dt = 1 / 240, lead = mode === 'duel' ? 0.3 : 0.2, track = [], end = rep.plan.simEnd, wp = mode === 'duel' ? 3.2 : 2.2, wl = { duel: 4.2, rim: 3.4, finish: 5.5 }[mode];
     let pos = null, look = null; const vp = V(), vl = V();
     const step = (x, v, target, om) => { const f = 1 + 2 * dt * om, oo = om * om, hoo = dt * oo, hhoo = dt * hoo, detInv = 1 / (f + hhoo); return [(f * x + dt * v + hhoo * target) * detInv, (v + hoo * (target - x)) * detInv]; };
     for (let t = 0; t <= end + 1e-6; t += dt) {
