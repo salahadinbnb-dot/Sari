@@ -83,7 +83,7 @@ function buildGymHoop(scene) {
   scene.add(g);
 }
 
-function buildRoom(scene) {
+function buildRoom(scene, opts = {}) {
   const { wallX, backZ, farZ, ceilY, lampY } = GYM;
   const wallTex = blockTexture(5);
   const wallMat = (len, hgt) => { const t = wallTex.clone(); t.needsUpdate = true; t.repeat.set(len / 4.0, hgt / 2.0); return new THREE.MeshStandardMaterial({ map: t, roughness: 0.92, metalness: 0 }); };
@@ -126,7 +126,7 @@ function buildRoom(scene) {
     x.fillStyle = '#d8d8d8'; x.font = '700 70px Arial'; x.fillText('HOME', w * 0.22, 90); x.fillText('GUEST', w * 0.78, 90);
   });
   const sb = new THREE.Mesh(new THREE.BoxGeometry(3.2, 1.6, 0.18), [0, 0, 0, 0, 0, 0].map((_, i) => i === 4 ? new THREE.MeshStandardMaterial({ map: sbTex, roughness: 0.5, emissive: 0xffffff, emissiveMap: sbTex, emissiveIntensity: 0.35 }) : new THREE.MeshStandardMaterial({ color: 0x111214, roughness: 0.6 })));
-  sb.position.set(-wallX + 0.1, 5.6, 5.5); sb.rotation.y = Math.PI / 2; scene.add(sb);
+  sb.position.set(-wallX + 0.1, 5.6, 5.5); sb.rotation.y = Math.PI / 2; if (opts.scoreboard !== false) scene.add(sb);
   const rackMat = new THREE.MeshStandardMaterial({ color: 0x1c1d21, roughness: 0.5, metalness: 0.6 });
   const rack = new THREE.Group();
   for (const y of [0.35, 0.8]) { const r = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.04, 0.5), rackMat); r.position.y = y; rack.add(r); }
@@ -137,7 +137,8 @@ function buildRoom(scene) {
   return { lamps };
 }
 
-export function buildGym(renderer, scene) {
+// opts.scoreboard = false leaves the wall scoreboard out (it sits behind the titles of the portrait clips)
+export function buildGym(renderer, scene, opts = {}) {
   scene.background = new THREE.Color(0x040405);
   scene.fog = new THREE.Fog(0x040405, 24, 46);
   const wc = woodCanvas(); paintGymCourt(wc.getContext('2d'));
@@ -152,7 +153,7 @@ export function buildGym(renderer, scene) {
   outer.rotation.x = -Math.PI / 2; outer.position.y = -0.004; scene.add(outer);
   buildGymHoop(scene);
   const net = new Net(scene);
-  const room = buildRoom(scene);
+  const room = buildRoom(scene, opts);
   return { floor, reflector, net, lamps: room.lamps };
 }
 
