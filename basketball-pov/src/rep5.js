@@ -57,7 +57,7 @@ export class Rep {
   buildTable() {
     const rig = this.rigs.you, tr = this.tracks.you, d1 = this.tracks.d1, drig = this.rigs.d1, P0 = this.plan;
     const n = Math.ceil(P0.simEnd * HZ) + 1;
-    const T = { n, hip: [], yaw: [], wL: [], wR: [], xL: [], xR: [], yL: [], yR: [], head: [], shL: [], shR: [], elbL: [], elbR: [], ankL: [], ankR: [], d1hip: [], d1yaw: [], d1shL: [], d1shR: [], d1head: [], d1com: [], d1feet: [] };
+    const T = { n, hip: [], yaw: [], wL: [], wR: [], xL: [], xR: [], yL: [], yR: [], head: [], shL: [], shR: [], elbL: [], elbR: [], ankL: [], ankR: [], youCom: [], youFeet: [], d1hip: [], d1yaw: [], d1shL: [], d1shR: [], d1head: [], d1com: [], d1feet: [] };
     const feet = { you: { L: [], R: [] }, d1: { L: [], R: [] } };
     const addFeet = (who, P) => { for (const s of ['L', 'R']) { const k = s.toLowerCase(); feet[who][s].push({ a: P.pos[k + 'tibia'].clone(), h: P.pos[k + 'hipjoint'].clone(), w: P.planted ? P.planted[s] : 0 }); } };
     const X = V(1, 0, 0), Y = V(0, 1, 0);
@@ -72,6 +72,9 @@ export class Rep {
       T.head.push(rig.P.Head.clone()); T.shL.push(rig.P.L_UpperArm.clone()); T.shR.push(rig.P.R_UpperArm.clone());
       T.elbL.push(rig.P.L_Forearm.clone()); T.elbR.push(rig.P.R_Forearm.clone());
       T.ankL.push(P.pos.ltibia.clone()); T.ankR.push(P.pos.rtibia.clone());
+      const yh = P.pos.lhipjoint.clone().add(P.pos.rhipjoint).multiplyScalar(0.5);
+      T.youCom.push(yh.multiplyScalar(0.45).addScaledVector(P.pos.thorax, 0.3).addScaledVector(P.pos.head, 0.08).addScaledVector(P.pos.lfemur, 0.085).addScaledVector(P.pos.rfemur, 0.085));
+      T.youFeet.push([P.pos.ltibia.clone(), P.pos.rtibia.clone(), P.pos.ltoes.clone(), P.pos.rtoes.clone()]);
       addFeet('you', P);
       const D = d1.at(t); this.contactOffset('d1', D, t);
       drig.applyMocap(D, D.src, {});
@@ -173,7 +176,8 @@ export class Rep {
     const T = this.T, P0 = this.plan, i0 = Math.round(P0.gatherAt * HZ), win = (a) => Math.min(...a.slice(Math.max(0, i0 - 24), i0 + 48).map(v => v.y));
     const fl = win(T.ankL), fr = win(T.ankR);
     // (from the dip, so a running stride into the gather isn't taken for the jump)
-    for (let i = Math.max(i0, Math.round(((P0.setAt ?? 0) - RISE) * HZ)); i < T.n; i++) if (T.ankL[i].y > fl + 0.05 && T.ankR[i].y > fr + 0.05) { P0.takeoff = i / HZ; break; }
+    if (P0.takeoffAt !== undefined) P0.takeoff = P0.takeoffAt; // (given: the take's own toe-off)
+    else for (let i = Math.max(i0, Math.round(((P0.setAt ?? 0) - RISE) * HZ)); i < T.n; i++) if (T.ankL[i].y > fl + 0.05 && T.ankR[i].y > fr + 0.05) { P0.takeoff = i / HZ; break; }
     if (P0.takeoff === undefined || P0.takeoff > P0.release) P0.takeoff = P0.release - 0.25;
     // landing: first moment after the release with a foot back on the floor
     for (let i = Math.round(P0.release * HZ); i < T.n; i++) if (T.ankL[i].y < fl + 0.03 || T.ankR[i].y < fr + 0.03) { P0.land = i / HZ; break; }
@@ -417,7 +421,7 @@ export class Rep {
   // outside the ring and above it; (plan.miss.side, in metres: + to the shooter's right) shades it left or right
   missPoint() {
     const P0 = this.plan, h = this.tab('hip', P0.release), s = V(h.x - RIM.x, 0, h.z - RIM.z).normalize(), r = V(s.z, 0, -s.x);
-    return RIM.clone().addScaledVector(s, 0.2286 + 0.075).addScaledVector(UP, 0.095).addScaledVector(r, P0.miss.side || 0);
+    return RIM.clone().addScaledVector(s, (P0.miss.long ? -1 : 1) * (0.2286 + 0.075)).addScaledVector(UP, 0.095).addScaledVector(r, P0.miss.side || 0);
   }
   // ...and off it: reflected about the contact normal (restitution 0.55), then free - gravity, floor bounces
   // (restitution 0.62, a little friction each time) and a roll; tabulated once
@@ -427,7 +431,7 @@ export class Rep {
       const q = this.missPoint(), T = P0.rim - P0.release, a = this._rel;
       const vin = V((q.x - a.x) / T, (q.y - a.y + 0.5 * G9 * T * T) / T - G9 * T, (q.z - a.z) / T);
       const h = this.tab('hip', P0.release), s = V(h.x - RIM.x, 0, h.z - RIM.z).normalize();
-      const n = s.clone().multiplyScalar(0.075).addScaledVector(UP, 0.095).normalize();
+      const n = s.clone().multiplyScalar(P0.miss.long ? -0.075 : 0.075).addScaledVector(UP, 0.095).normalize();
       const vout = vin.clone().addScaledVector(n, -(1 + 0.55) * vin.dot(n)).addScaledVector(V(s.z, 0, -s.x), (P0.miss.kick ?? 0.35));
       const dt = 1 / HZ, pts = [], hits = []; let p = q.clone(), v = vout.clone();
       for (let tt = P0.rim; tt <= P0.simEnd + 1e-6; tt += dt) {
@@ -532,6 +536,31 @@ export class Rep {
     const lean = Math.max(smooth((b.outside - 0.03) / 0.08), smooth((b.lat - 0.35) / 0.4));
     const open = Math.max(heels, lean, smooth((b.away - 0.35) / 0.4));
     return { ...b, heels, lean, open, kind: open < 0.5 ? 'balanced' : (b.oSide > b.oBack ? 'lean' : 'heels') };
+  }
+
+  // the shooter's own balance: his XcoM against the base of his (locked) feet while they're down (for the floor meter),
+  // and open: 0 set, 1 his momentum is carrying him off his feet - drifting
+  balanceYou(t) {
+    const T = this.T, n = T.n, i = clamp(Math.round(t * HZ), 0, n - 1), j0 = Math.max(0, i - 2), j1 = Math.min(n - 1, i + 2);
+    const c = T.youCom[i], v = T.youCom[j1].clone().sub(T.youCom[j0]).multiplyScalar(HZ / Math.max(1, j1 - j0)); v.y = 0;
+    const x = c.clone().addScaledVector(v, 1 / W0); x.y = 0;
+    const L = this.lock.you.L[i], R = this.lock.you.R[i], [la, ra, lt, rt] = T.youFeet[i].map((p, k) => V(p.x, 0, p.z).add(k % 2 ? R : L).setY(0));
+    const base = [la, ra, lt, rt, la.clone().addScaledVector(la.clone().sub(lt), 0.3), ra.clone().addScaledVector(ra.clone().sub(rt), 0.3)];
+    // distance outside the convex hull of the base (0 inside)
+    const hullPts = (() => { const p = base.map(q => [q.x, q.z]).sort((a, b) => a[0] - b[0] || a[1] - b[1]), cr = (o, a, b) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]), lo = [], hi = [];
+      for (const q of p) { while (lo.length >= 2 && cr(lo[lo.length - 2], lo[lo.length - 1], q) <= 0) lo.pop(); lo.push(q); }
+      for (const q of p.slice().reverse()) { while (hi.length >= 2 && cr(hi[hi.length - 2], hi[hi.length - 1], q) <= 0) hi.pop(); hi.push(q); }
+      return lo.slice(0, -1).concat(hi.slice(0, -1)); })();
+    let out = 0;
+    for (let k = 0; k < hullPts.length; k++) {
+      const a = hullPts[k], b = hullPts[(k + 1) % hullPts.length], ex = b[0] - a[0], ez = b[1] - a[1], L2 = Math.hypot(ex, ez) || 1;
+      const side = (ex * (x.z - a[1]) - ez * (x.x - a[0])) / L2; // > 0 inside (counter-clockwise hull)
+      if (side < 0) out = Math.max(out, -side);
+    }
+    // (a pull-up steps into the shot at ~1 m/s, so the XcoM is a little ahead of the feet even when it's under control:
+    // what separates set from drifting is how fast the body is still going - over ~1.8 m/s it carries you off)
+    const speed = v.length();
+    return { x, c: V(c.x, 0, c.z), v, base, out, speed, open: smooth((speed - 1.3) / 0.6) };
   }
 
   // ---------- poses ----------
