@@ -16,6 +16,7 @@ const KIND = {
   air: ['IN THE AIR', 'He bit: can\'t move till he lands'],
   behind: ['BEHIND YOU', 'Chasing: he can\'t get a hand up'],
   beat: ['BEAT', 'Landing, turning, chasing'],
+  running: ['RUNNING WITH YOU', 'Matching your speed'],
   wrong: ['WRONG WAY', 'Weight on the fake side'],
   overrun: ['CAN\'T STOP', 'Momentum taking him past you'],
 };
@@ -49,6 +50,7 @@ export class Hud8 {
         const a = rep.frame('you', P.release).p, d = rep.frame('d1', P.release).p, ft = a.distanceTo(d) / 0.3048;
         band = ft < 2 ? 'VERY TIGHT' : ft < 4 ? 'TIGHT' : ft < 6 ? 'OPEN' : 'WIDE OPEN';
         sepLabel = `SHOT · ${ft.toFixed(1)} FT ${band}`;
+        P.vals = { ...(P.vals || {}), sep: ft.toFixed(1) };
       }
       const marks = P.contact
         ? [{ t: P.contact.t, label: 'CONTACT' }, { t: P.release, label: 'LAYUP', minor: true }]
@@ -107,12 +109,12 @@ export class Hud8 {
       if (this.cardKind !== k) {
         this.cardKind = k;
         this.card.innerHTML = k === 'intro'
-          ? `<div class="k">FILM ROOM</div><div class="h">READ HIS<br>WEIGHT</div><div class="s">When to shoot · when to finish through contact</div>
-             <div class="stat"><div class="n">27.5%</div><div class="l">NBA pull-up 3s with the closest<br>defender 2-4 ft away</div><div class="n g">36.3%</div><div class="l">with him 6+ ft away</div></div>
-             <div class="list"><div>1 · Contested make</div><div>2 · On his heels</div><div>3 · On the lean</div><div>4 · Contact finish</div></div>
+          ? `<div class="k">FILM ROOM</div><div class="h">SLOW?<br>MAKE HIM<br>MOVE</div><div class="s">Beat a quicker defender without speed or strength</div>
+             <div class="stat"><div class="n g">0.22 s</div><div class="l">for a defender just to react to<br>what you do first - however fast he is</div></div>
+             <div class="list"><div>1 · Head fake</div><div>2 · Shoulder fake</div><div>3 · Hesi pull-up</div><div>4 · Step-back</div></div>
              <div class="key">Ring on the floor = his feet · Arrow = where his weight is going<br><b class="r">Red</b>: he can contest · <b class="g">Green</b>: go</div>`
-          : `<div class="big">Shoot when his<br>weight is <em>wrong.</em></div><div class="big" style="margin-top:60px">Finish <em>through</em><br>him before<br>he's set.</div>
-             <div class="src">Stats: NBA.com player tracking, 2024-25 regular season · Rules: NBA Official Playing Rules 2025-26,<br>Comments on the Rules II.C · Timing: Vater 2024 (Sci Rep), Dos'Santos et al. 2018 (Sports Med)</div>`;
+          : `<div class="big">You don't need<br>to be <em>faster.</em></div><div class="big" style="margin-top:60px">Make him<br><em>move first.</em></div>
+             <div class="src">Reaction time: Singh 2020, Int J Physiol Nutr Phys Educ 5(1):174-176 - 45 basketball players, visual 225 ms,<br>no link between reaction time and sprint speed · Motion: CMU Graphics Lab Motion Capture Database</div>`;
       }
       const o = k === 'intro' ? 1 - smooth((e - (S.v1 - S.v0 - 0.35)) / 0.35) : smooth(e / 0.4);
       this.card.style.opacity = String(o);
@@ -144,7 +146,8 @@ export class Hud8 {
     } else this.hit.style.opacity = '0';
     // caption
     if (fr.caption) {
-      const box = this.cap.querySelector('.box'); if (box.innerHTML !== fr.caption) box.innerHTML = fr.caption;
+      const text = fr.caption.replace(/\{(\w+)\.(\w+)\}/g, (m, r, k) => (this.reps[r] && this.reps[r].plan.vals && this.reps[r].plan.vals[k]) ?? m);
+      const box = this.cap.querySelector('.box'); if (box.innerHTML !== text) box.innerHTML = text;
       // live captions get out of the way of the ball going up
       const o = smooth(e / 0.18) * smooth(r / 0.14) * (fr.freeze ? 1 : 1 - smooth((st - (P.release - 0.14)) / 0.1));
       this.cap.style.opacity = String(o); this.cap.style.transform = fr.freeze ? `scale(${1.06 - 0.06 * smooth(e / 0.25)})` : 'none';

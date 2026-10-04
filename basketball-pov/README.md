@@ -2,7 +2,8 @@
 
 2K-style gameplay clips and breakdowns, rendered from three.js and driven by real motion capture.
 
-- **v7 (latest): film room, "Get Your Hands On It".** Steals against a good dribbler, when he's beaten you, and off the ball, with the skeletons in the gym. [`out/hands_on_it.mp4`](out/hands_on_it.mp4) (1080×1920 portrait, 30 fps, H.264 + AAC)
+- **v8 (latest): film room, "Make Him Move".** How a shooter who isn't fast or strong beats a quicker defender: head fake, shoulder fake, hesi pull-up, step-back, each into a pull-up over him, with the skeletons in the gym. [`out/make_him_move.mp4`](out/make_him_move.mp4) (1080×1920 portrait, 30 fps, H.264 + AAC)
+- v7: film room, "Get Your Hands On It". Steals against a good dribbler, when he's beaten you, and off the ball, with the skeletons in the gym. [`out/hands_on_it.mp4`](out/hands_on_it.mp4) (1080×1920 portrait, 30 fps, H.264 + AAC)
 - v6: film room, "Get Up". How to approach the rim, a rim touch, then a tomahawk dunk, with the skeleton in the gym. [`out/get_up.mp4`](out/get_up.mp4) (1080×1920 portrait, 30 fps, H.264 + AAC)
 - v5: film room, "Read his weight". When to shoot, when not to, and how to finish through contact, with the skeletons in the gym. [`out/read_his_weight.mp4`](out/read_his_weight.mp4) (1080×1920 portrait, 30 fps, H.264 + AAC)
 - v4: skeletons hooping in a practice gym, shot like a phone clip. [`out/skeleton_gym.mp4`](out/skeleton_gym.mp4) (1080×1920 portrait, 30 fps, H.264 + AAC)
@@ -24,6 +25,34 @@ It writes three files:
 - `clip_overlay.mp4`: the footage with the tracked skeleton drawn on it.
 - `clip_pose.mp4`: the skeleton alone on black, the pose-reference format that AI video tools take.
 - `clip.json`: per-frame 2D image landmarks with visibility, plus 3D world landmarks in metres around the hips.
+
+## v8: what it shows
+
+A film-room breakdown in four reps of beating a quicker man without speed: make him move first, then rise. The floor
+ring and arrow under the defender show his base and where his weight is going; the strip along the bottom turns green
+while it's going the wrong way, with the shot marked and the closest-defender distance at the release.
+
+| Rep | What it shows |
+|---|---|
+| 1 · Head fake | He closes out hard. You sell the shot (ball to the forehead, eyes on the rim) and he leaves his feet. He's in the air 0.6 s and can't change direction, so one hard dribble takes you by him; stop and rise, 4.8 ft open. |
+| 2 · Shoulder fake | He's quicker. You jab and dip your shoulder left, he slides 0.9 m that way, and you go right. He has to stop, re-plant and come back: the shot goes up 6.7 ft open. |
+| 3 · Hesi pull-up | He runs with you, a half step ahead. You stop on a dime. He needs about 0.22 s just to see it, which at your 3.2 m/s is 0.7 m before he even brakes, and he goes on by: 5.0 ft. |
+| 4 · Step-back | You attack, he sits down and slides to cut off the cross. You snatch it back and hop back while he's still sliding the other way: 6.0 ft. |
+
+The numbers come from:
+
+- **Reaction time:** Singh 2020 (Int J Physiol Nutr Phys Educ 5(1):174-176). 45 basketball players: visual reaction time 225 ms, and no relationship between reaction time and sprint speed - a faster defender doesn't react sooner.
+- **Measured in the scene:** air time, how far he went the wrong way, your speed into the stop and the closest-defender distance at each release are all measured from the motion.
+
+## How v8 is made
+
+- **Engine:** the v5 page and rep engine (`src/rep5.js`, `src/camera5.js`, `src/meter5.js`), extended for fakes: the ball rides both hands through a shot fake (`holdHands`), the eyes stay on the rim through it (`lookRim`), a forced dribble hand (`pushHand`), several contest windows, and a jump that carries the closeout's momentum through the air (`compress.carry` in `src/animator.js`).
+- **Motion:** whole real takes (CMU mocap), every pull-up the same 124_05 jump shot.
+  - Head fake: 78_22 (fake shot, break right), the rip-through played quick. The defender is 78_25's closeout, 124_05's jump flying at you, then two slides of 78_30.
+  - Shoulder fake: 78_20 (feint left, move right), played a touch slow. The defender bites with 78_30's slide and has to come back.
+  - Hesi: 78_32's drive at 0.72x into the pull-up. The defender is 78_25's sprint alongside, its own stop starting a reaction time after yours.
+  - Step-back: 06_13's attack, cross and hop back (the hop played 1.6x). The defender is 78_30's slide off the cross.
+- **Overlays and edit:** `src/play8.js` (the reps and the measured numbers), `src/hud8.js` and `src/hud8.css`, `src/timeline8.js`, `src/main8.js`.
 
 ## v7: what it shows
 
@@ -250,6 +279,8 @@ A right-wing isolation with the clock running out and your team down two.
 npm install
 pip install pillow numpy scipy imageio-ffmpeg trimesh networkx mediapipe
 npm run assets      # Rocketbox models + uniforms, CMU mocap clips
+npm run preview:v8  # quick 540x960 check of v8
+npm run render:v8   # final 1080x1920 v8 with audio -> out/make_him_move.mp4
 npm run preview:v7  # quick 540x960 check of v7
 npm run render:v7   # final 1080x1920 v7 with audio -> out/hands_on_it.mp4
 npm run preview:v6  # quick 540x960 check of v6

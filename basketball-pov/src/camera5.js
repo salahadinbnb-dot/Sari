@@ -19,7 +19,7 @@ export class Cam5 {
       // pulled back to keep both of them in the narrow frame, tilted so their feet sit at the same place on screen
       // whatever the distance (above the timing strip, with the floor meter in view). The side is fixed per rep
       // from the line between them at camRef, so the camera never swings across them when the defender slides.
-      const A = rep.plan.camAngle ?? 0.6, HC = 1.75, FEET = 14.3 * Math.PI / 180;
+      const A = rep.plan.camAngle ?? 0.6, HC = rep.plan.camH ?? 1.75, FEET = 14.3 * Math.PI / 180;
       if (!rep._camDir) {
         const tr = rep.plan.camRef ?? rep.plan.release, y0 = rep.frame('you', tr).p, d0 = rep.frame('d1', tr).p, l0 = d0.clone().sub(y0).normalize();
         let n = V(-l0.z, 0, l0.x); if (n.x < 0) n.negate(); if (rep.plan.camSide) n.multiplyScalar(rep.plan.camSide);

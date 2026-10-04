@@ -59,7 +59,7 @@ async function init() {
   const meter = new FloorMeter(scene);
   const cam = new Cam5(reps);
   const camera = new THREE.PerspectiveCamera(54, W / H, 0.05, 120);
-  const frames = buildTimeMap(FPS);
+  const frames = buildTimeMap(reps, FPS);
   const hud = new Hud8(document.getElementById('hud'), reps, frames, FPS);
   const pw = Math.round(W * renderer.getPixelRatio()), ph = Math.round(H * renderer.getPixelRatio());
   const rtScene = new THREE.WebGLRenderTarget(pw, ph, { type: THREE.HalfFloatType, samples: q.has('nomsaa') ? 0 : 4 });
