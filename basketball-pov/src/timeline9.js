@@ -12,7 +12,7 @@ export const SEQ = [
 
   { rep: 'staydown', cam: 'duel', from: 0.0, to: '@bite', rate: 0.75, caption: 'Same move that beat the slow guy\'s man.<br><b>Close out short, hands up.</b>' },
   { rep: 'staydown', cam: 'duel', freeze: '@bite', dur: 2.6, caption: 'He sells the shot. <b>Hand up,<br>feet down:</b> you didn\'t bite.' },
-  { rep: 'staydown', cam: 'duel', from: '@bite', to: '@shot', rate: 0.45, caption: 'He breaks. <b>Slide with him</b> and beat<br>him to the spot. Make him shoot over you.' },
+  { rep: 'staydown', cam: 'duel', from: '@bite', to: '@shot', rate: 0.55, caption: 'He breaks. <b>Slide with him</b> and beat<br>him to the spot. Make him shoot over you.' },
   { rep: 'staydown', cam: 'rim', from: '@shot', to: '@miss', rate: 0.8 },
   { rep: 'staydown', cam: 'rim', freeze: '@miss', dur: 2.2, caption: 'Contested at {staydown.sep} ft. <b>Miss.</b>' },
 
@@ -37,7 +37,7 @@ export const SEQ = [
 export function buildTimeMap(reps, fps = FPS) {
   for (const s of SEQ) for (const k of ['from', 'to', 'freeze']) if (typeof s[k] === 'string') {
     const P = reps[s.rep].plan;
-    s[k] = { '@bite': P.marks.bite, '@pass': P.marks.pass + 0.3, '@shot': P.release + 0.12, '@miss': P.rim + 0.6 }[s[k]];
+    s[k] = { '@bite': P.marks.bite, '@pass': P.marks.pass + 0.3, '@shot': P.release + 0.12, '@miss': P.rim + 0.16 }[s[k]];
   }
   const frames = []; let vt = 0;
   SEQ.forEach((s, k) => {
