@@ -1,0 +1,32 @@
+<!doctype html><html><head><meta charset="utf-8"><style>html,body{margin:0;background:#777;overflow:hidden}</style>
+<script type="importmap">{"imports":{"three":"/node_modules/three/build/three.module.js","three/addons/":"/node_modules/three/examples/jsm/"}}</script>
+</head><body><script type="module">
+import * as THREE from 'three';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { loadTemplates, makePlayerMesh } from './player.js';
+try {
+  const q = new URLSearchParams(location.search);
+  const specs = JSON.parse(q.get('p'));
+  const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+  renderer.setSize(innerWidth, innerHeight); renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.0;
+  document.body.appendChild(renderer.domElement);
+  const scene = new THREE.Scene(); scene.background = new THREE.Color(0x6a6f78);
+  scene.environment = new THREE.PMREMGenerator(renderer).fromScene(new RoomEnvironment(), 0.04).texture;
+  scene.add(new THREE.HemisphereLight(0xffffff, 0x404040, 0.8));
+  const dl = new THREE.DirectionalLight(0xffffff, 2.2); dl.position.set(1.5, 4, 3); scene.add(dl);
+  const dl2 = new THREE.DirectionalLight(0xffffff, 1.2); dl2.position.set(-1.5, 3, -3); scene.add(dl2);
+  const models = [...new Set(specs.map(s => s.model))];
+  const T = await loadTemplates(models);
+  specs.forEach((s, i) => {
+    const { root } = makePlayerMesh(T, s);
+    root.position.x = (i - (specs.length - 1) / 2) * 0.9;
+    root.rotation.y = s.rot || 0;
+    scene.add(root);
+  });
+  const cam = new THREE.PerspectiveCamera(22, innerWidth / innerHeight, 0.05, 100);
+  cam.position.set(0, 1.35, 7.2); cam.lookAt(0, 1.05, 0);
+  await new Promise(r => setTimeout(r, 3000));
+  renderer.render(scene, cam);
+  window.__ready = true;
+} catch (e) { window.__error = String(e.stack || e); }
+</script></body></html>

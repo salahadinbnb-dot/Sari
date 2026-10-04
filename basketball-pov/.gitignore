@@ -1,0 +1,15 @@
+node_modules/
+assets/
+frames/
+*.log
+tools/__pycache__/
+out/*.wav
+out/preview*.mp4
+out/*_silent*.mp4
+out/events.json
+out/events2.json
+out/events3.json
+out/events4.json
+out/events5.json
+out/events6.json
+out/track/

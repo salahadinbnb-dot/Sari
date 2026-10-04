@@ -1,0 +1,95 @@
+@font-face { font-family: 'BC'; src: url('fonts/BarlowCondensed-Medium.ttf'); font-weight: 500; }
+@font-face { font-family: 'BC'; src: url('fonts/BarlowCondensed-SemiBold.ttf'); font-weight: 600; }
+@font-face { font-family: 'BC'; src: url('fonts/BarlowCondensed-Bold.ttf'); font-weight: 700; }
+@font-face { font-family: 'BC'; src: url('fonts/BarlowCondensed-ExtraBold.ttf'); font-weight: 800; }
+@font-face { font-family: 'BC'; src: url('fonts/BarlowCondensed-Black.ttf'); font-weight: 900; }
+@font-face { font-family: 'B'; src: url('fonts/Barlow-SemiBold.ttf'); font-weight: 600; }
+@font-face { font-family: 'B'; src: url('fonts/Barlow-Bold.ttf'); font-weight: 700; }
+
+:root { --red: #ff3b4e; --green: #2fe377; --amber: #ffc23a; --ink: rgba(6, 8, 14, 0.74); }
+html, body { margin: 0; padding: 0; background: #000; overflow: hidden; }
+#stage { position: relative; width: 1080px; height: 1920px; overflow: hidden; }
+#gl { position: absolute; inset: 0; width: 1080px; height: 1920px; display: block; }
+#hud { position: absolute; inset: 0; pointer-events: none; color: #fff; font-family: 'BC', sans-serif; }
+#hud > * { position: absolute; }
+
+/* top: series kicker and the rep title */
+.top { left: 0; right: 0; top: 70px; text-align: center; }
+.top .kick { font-weight: 700; font-size: 30px; letter-spacing: 7px; color: var(--amber); text-shadow: 0 2px 10px rgba(0,0,0,0.6); }
+.top .title { display: inline-block; margin-top: 10px; font-weight: 900; font-size: 84px; letter-spacing: 1px; line-height: 1;
+  padding: 10px 30px 12px; background: var(--ink); border-left: 8px solid var(--amber); transform: skewX(-7deg); box-shadow: 0 10px 34px rgba(0,0,0,0.45); }
+.top .title span { display: inline-block; transform: skewX(7deg); }
+.mode { left: 0; right: 0; top: 238px; text-align: center; }
+.mode span { display: inline-block; font-weight: 800; font-size: 28px; letter-spacing: 4px; padding: 6px 16px; background: rgba(255,255,255,0.92); color: #0b0e16; }
+.mode .fz { background: var(--amber); }
+
+/* caption */
+.cap { left: 50px; right: 50px; top: 292px; text-align: center; }
+.cap .box { display: inline-block; font-family: 'B'; font-weight: 600; font-size: 46px; line-height: 1.2; padding: 18px 30px 20px; background: var(--ink);
+  border-radius: 6px; box-shadow: 0 14px 40px rgba(0,0,0,0.5); }
+.cap .box b { color: var(--amber); font-weight: 700; }
+
+
+.mode .rp { background: #ff3b4e; color: #fff; }
+
+/* overlays drawn on the picture */
+.ov { inset: 0; }
+.ov svg { position: absolute; inset: 0; overflow: visible; }
+.ov .stp { font-family: 'BC'; font-weight: 800; font-size: 44px; fill: #fff; text-anchor: middle; paint-order: stroke; stroke: rgba(0,0,0,0.85); stroke-width: 7px; letter-spacing: 1px; }
+.ov .big .stp { fill: var(--amber); font-size: 46px; }
+.ov .plant .stp { fill: var(--green); font-size: 48px; }
+.ov .dash { stroke: rgba(255,255,255,0.85); stroke-width: 4; stroke-dasharray: 12 9; }
+.ov .hipl { stroke: var(--amber); stroke-width: 6; stroke-linecap: round; }
+.ov .brk { stroke: var(--amber); stroke-width: 4; }
+.ov .lbl { font-family: 'BC'; font-weight: 900; font-size: 44px; fill: var(--amber); paint-order: stroke; stroke: rgba(0,0,0,0.85); stroke-width: 8px; }
+.ov .ang { stroke: var(--green); stroke-width: 6; stroke-linecap: round; }
+.ov .flr { stroke: rgba(255,255,255,0.9); stroke-width: 4; stroke-dasharray: 10 8; }
+.ov .arc { stroke: var(--green); stroke-width: 5; fill: rgba(47,227,119,0.18); }
+.ov .dot { fill: var(--green); stroke: #04150a; stroke-width: 3; }
+.ov .deg { font-family: 'BC'; font-weight: 900; font-size: 54px; fill: var(--green); text-anchor: middle; paint-order: stroke; stroke: rgba(0,0,0,0.85); stroke-width: 9px; }
+
+/* reach gauge: a tape from 8 ft to 12 ft on the right edge, the rim at 10 ft */
+.gauge { right: 34px; top: 0; width: 90px; height: 1920px; }
+.gauge .rail { position: absolute; right: 30px; top: 320px; height: 980px; width: 6px; background: rgba(255,255,255,0.35); border-radius: 3px; box-shadow: 0 0 10px rgba(0,0,0,0.6); }
+.gauge .tick { position: absolute; right: 30px; width: 18px; height: 3px; margin-top: -1px; background: rgba(255,255,255,0.6); }
+.gauge .tick.big { width: 30px; height: 4px; background: #fff; }
+.gauge .ft { position: absolute; right: 66px; margin-top: -20px; font-weight: 800; font-size: 32px; color: rgba(255,255,255,0.85); text-shadow: 0 2px 6px rgba(0,0,0,0.9); }
+.gauge .rimline { position: absolute; right: 0; width: 110px; height: 6px; margin-top: -3px; background: #ff6a2a; box-shadow: 0 0 14px rgba(255,106,42,0.8); }
+.gauge .rimline span { position: absolute; right: 118px; top: -18px; font-weight: 900; font-size: 30px; letter-spacing: 2px; color: #ff8a52; white-space: nowrap; text-shadow: 0 2px 6px rgba(0,0,0,0.9); }
+.gauge .glow { position: absolute; right: 30px; width: 6px; background: linear-gradient(var(--green), rgba(47,227,119,0.25)); border-radius: 3px; }
+.gauge .mark { position: absolute; right: 18px; width: 30px; height: 0; }
+.gauge .mark::before { content: ''; position: absolute; right: -6px; top: -15px; border: 15px solid transparent; border-right: 22px solid #fff; border-left: 0; }
+.gauge .mark span { position: absolute; right: 30px; top: -27px; font-weight: 900; font-size: 38px; letter-spacing: 1px; padding: 2px 12px; background: #fff; color: #0b0e16; white-space: nowrap; }
+.gauge .mark.over span { background: var(--green); color: #04150a; box-shadow: 0 0 22px rgba(47,227,119,0.6); }
+.gauge .mark.over::before { border-right-color: var(--green); }
+
+/* the numbers: four tiles along the bottom */
+.nums { left: 40px; right: 40px; top: 1600px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+.nums::before { content: ''; position: absolute; left: -40px; right: -40px; top: -90px; height: 420px; background: linear-gradient(rgba(5,7,12,0), rgba(5,7,12,0.72) 30%, rgba(5,7,12,0.82)); z-index: -1; }
+.nums .tile { background: rgba(10,12,20,0.78); border-top: 5px solid rgba(255,255,255,0.5); padding: 12px 14px 14px; box-shadow: 0 10px 28px rgba(0,0,0,0.5); }
+.nums .tile.hot { border-top-color: var(--amber); }
+.nums .l { font-weight: 800; font-size: 24px; letter-spacing: 3px; color: rgba(255,255,255,0.72); white-space: nowrap; }
+.nums .v { margin-top: 2px; font-weight: 900; font-size: 64px; line-height: 1; }
+.nums .v small { font-size: 30px; font-weight: 800; margin-left: 4px; color: rgba(255,255,255,0.8); }
+.nums .s { margin-top: 6px; font-family: 'B'; font-weight: 600; font-size: 19px; line-height: 1.2; color: rgba(255,255,255,0.7); min-height: 24px; }
+.nums .speed { border-top-color: #fff; }
+.nums .hips .v { color: var(--amber); } .nums .plant .v { color: var(--green); } .nums .jump .v { color: #fff; }
+.card .big.sm { font-size: 64px; margin-top: 50px; line-height: 1.25; color: rgba(255,255,255,0.92); }
+/* cards */
+.card { inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; background: rgba(4, 6, 12, 0.78); }
+.card .k { font-weight: 800; font-size: 34px; letter-spacing: 9px; color: var(--amber); }
+.card .h { margin-top: 18px; font-weight: 900; font-size: 150px; line-height: 0.92; letter-spacing: 1px; }
+.card .s { margin-top: 28px; font-family: 'B'; font-weight: 600; font-size: 42px; color: rgba(255,255,255,0.88); }
+.card .list { margin-top: 50px; display: flex; flex-direction: column; gap: 16px; font-weight: 800; font-size: 44px; letter-spacing: 2px; }
+.card .list div { padding: 8px 26px; background: rgba(255,255,255,0.08); border-left: 6px solid var(--amber); text-align: left; min-width: 520px; }
+.card .key { margin-top: 50px; font-family: 'B'; font-weight: 600; font-size: 32px; line-height: 1.45; color: rgba(255,255,255,0.85); }
+.card .key b { font-weight: 700; }
+.card .key .r { color: var(--red); } .card .key .g { color: var(--green); }
+.card .big { font-weight: 900; font-size: 104px; line-height: 1.02; }
+.card .big em { font-style: normal; color: var(--amber); }
+.card .stat { margin-top: 56px; display: grid; grid-template-columns: auto auto; column-gap: 26px; row-gap: 10px; align-items: center; text-align: left; }
+.card .stat .n { font-weight: 900; font-size: 84px; line-height: 1; color: var(--red); text-align: right; }
+.card .stat .n.g { color: var(--green); }
+.card .stat .l { font-family: 'B'; font-weight: 600; font-size: 28px; line-height: 1.25; color: rgba(255,255,255,0.85); }
+.card .src { position: absolute; left: 50px; right: 50px; bottom: 120px; font-family: 'B'; font-weight: 600; font-size: 20px; line-height: 1.5; color: rgba(255,255,255,0.55); }
+

@@ -1,0 +1,28 @@
+<!doctype html><html><head><meta charset="utf-8">
+<script type="importmap">{"imports":{"three":"/node_modules/three/build/three.module.js","three/addons/":"/node_modules/three/examples/jsm/"}}</script>
+</head><body><script type="module">
+import * as THREE from 'three';
+import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
+try {
+  const id = new URLSearchParams(location.search).get('m') || '04';
+  const mgr = new THREE.LoadingManager(); mgr.setURLModifier(u => u.endsWith('.tga') ? '/assets/raw/m04/body_color.jpg' : u);
+  const obj = await new FBXLoader(mgr).loadAsync('/assets/raw/m' + id + '/model.fbx');
+  obj.scale.setScalar(0.01); obj.updateMatrixWorld(true);
+  let sk; obj.traverse(o => { if (o.isSkinnedMesh) sk = o; });
+  const g = sk.geometry;
+  const pos = g.attributes.position.clone().applyMatrix4(sk.matrixWorld);
+  const nrm = g.attributes.normal.clone().applyNormalMatrix(new THREE.Matrix3().getNormalMatrix(sk.matrixWorld));
+  const out = {
+    bones: sk.skeleton.bones.map(b => b.name),
+    mats: sk.material.map(m => m.name),
+    groups: g.groups,
+    pos: Array.from(pos.array).map(v => +v.toFixed(5)),
+    nrm: Array.from(nrm.array).map(v => +v.toFixed(3)),
+    uv: Array.from(g.attributes.uv.array).map(v => +v.toFixed(6)),
+    si: Array.from(g.attributes.skinIndex.array),
+    sw: Array.from(g.attributes.skinWeight.array).map(v => +v.toFixed(3)),
+    index: g.index ? Array.from(g.index.array) : null,
+  };
+  window.__data = JSON.stringify(out); window.__ready = true;
+} catch (e) { window.__error = String(e.stack || e); }
+</script></body></html>

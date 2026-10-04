@@ -1,0 +1,55 @@
+<!doctype html><html><head><meta charset="utf-8"><style>html,body{margin:0;background:#222;overflow:hidden}</style>
+<script type="importmap">{"imports":{"three":"/node_modules/three/build/three.module.js","three/addons/":"/node_modules/three/examples/jsm/"}}</script>
+</head><body><script type="module">
+import * as THREE from 'three';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { loadTemplates, makePlayerMesh, Rig } from './player.js';
+import { loadClip, sampleClip, toTargets, Placement, facingYaw, hipCenter } from './mocap.js';
+try {
+  const q = new URLSearchParams(location.search);
+  const clipName = q.get('clip');
+  const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+  renderer.setSize(innerWidth, innerHeight); renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.shadowMap.enabled = true;
+  document.body.appendChild(renderer.domElement);
+  const scene = new THREE.Scene(); scene.background = new THREE.Color(0x3a3f48);
+  scene.environment = new THREE.PMREMGenerator(renderer).fromScene(new RoomEnvironment(), 0.04).texture;
+  scene.environmentIntensity = 0.5;
+  scene.add(new THREE.HemisphereLight(0xffffff, 0x404040, 0.9));
+  const dl = new THREE.DirectionalLight(0xffffff, 2.2); dl.position.set(3, 8, 5); dl.castShadow = true;
+  dl.shadow.mapSize.set(2048, 2048); Object.assign(dl.shadow.camera, { left: -6, right: 6, top: 6, bottom: -6 }); scene.add(dl);
+  const grid = new THREE.GridHelper(20, 20, 0x888888, 0x555555); scene.add(grid);
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(40, 40), new THREE.MeshStandardMaterial({ color: 0x9a7b55 }));
+  floor.rotation.x = -Math.PI / 2; floor.position.y = -0.002; floor.receiveShadow = true; scene.add(floor);
+  const T = await loadTemplates(['04']);
+  const spec = { model: '04', tex: 'you', height: 1.96 };
+  const { root, k } = makePlayerMesh(T, spec); scene.add(root);
+  const rig = new Rig(root, k);
+  const clip = await loadClip(clipName);
+  // floor: min toe height over clip
+  let minY = 1e9; for (let i = 0; i < clip.n; i++) { minY = Math.min(minY, clip.pos.ltoes[i * 3 + 1], clip.pos.rtoes[i * 3 + 1], clip.pos.lfoot[i * 3 + 1], clip.pos.rfoot[i * 3 + 1]); }
+  const ourLeg = rig.len.thigh + rig.len.calf;
+  const scale = ourLeg / clip.legLen;
+  const s0 = sampleClip(clip, 0);
+  const pl = new Placement(hipCenter(s0), facingYaw(s0), new THREE.Vector3(0, 0, 0), Math.PI, scale);
+  // foot rest angle: from rest bone dirs in json (tibia->foot)
+  const src = { armLen: clip.armLen, scale, footRest: 0.52 };
+  const cam = new THREE.PerspectiveCamera(35, innerWidth / innerHeight, 0.05, 100);
+  window.info = { n: clip.n, dur: clip.dur, fps: clip.fps, scale, minY };
+  window.renderAt = (t, view) => {
+    const s = sampleClip(clip, t);
+    for (const kk of Object.keys(s.pos)) s.pos[kk].y -= minY;
+    const Tg = toTargets(s, pl);
+    rig.apply ? rig.applyMocap(Tg, src, {}) : 0;
+    const hc = Tg.pos.lhipjoint.clone().add(Tg.pos.rhipjoint).multiplyScalar(0.5);
+    const ang = (view || 0) * Math.PI / 180;
+    cam.position.set(hc.x + Math.sin(ang) * 5.2, 1.6, hc.z + Math.cos(ang) * 5.2);
+    cam.lookAt(hc.x, 0.95, hc.z);
+    scene.updateMatrixWorld(true);
+    renderer.render(scene, cam);
+    return { x: +hc.x.toFixed(2), z: +hc.z.toFixed(2), yaw: +Tg.yaw.toFixed(2) };
+  };
+  await new Promise(r => setTimeout(r, 2000));
+  window.__ready = true;
+} catch (e) { window.__error = String(e.stack || e); }
+</script></body></html>
