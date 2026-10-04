@@ -159,7 +159,7 @@ export const REPS = {
         { t: release - 0.4, kind: 'contest', open: 0 }];
       planA.labels = P.labels;
       P.marks = { bite: stopAt + 0.2, pass: t0 }; P.vals = { flight: flight.toFixed(2) };
-      P.camTeam = { pos: { x: -3.9, y: 5.6, z: 9.2 }, look: { x: -3.45, y: 0.3, z: 3.3 }, fov: 62 };
+      P.camTeam = { off: { x: -0.5, y: 4.3, z: 5.4 }, lookOff: { x: -0.2, z: -0.5 }, lookY: 0.5, fov: 56 };
       return { you: o2, d1, extra: { o1, x1 }, partA: { tracks: { you: o1, d1 }, plan: planA } };
     },
   },

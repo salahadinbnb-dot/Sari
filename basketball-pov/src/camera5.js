@@ -13,8 +13,16 @@ export class Cam5 {
     for (const [name, rep] of Object.entries(reps)) for (const mode of rep.plan.contact ? ['finish'] : ['duel', 'rim'].concat(rep.plan.camTeam ? ['team'] : [])) this.paths[name + ':' + mode] = this.bake(rep, mode);
   }
   ideal(rep, mode, t) {
-    // team: a fixed high view from behind the top of the key that holds the whole play
-    if (mode === 'team') { const C = rep.plan.camTeam; return { pos: V(C.pos.x, C.pos.y, C.pos.z), look: V(C.look.x, C.look.y, C.look.z), fov: C.fov }; }
+    // team: high and behind the play, on the ball and the man guarding it - the driver and you until his pass, then
+    // swinging over to your man and you as you close out
+    if (mode === 'team') {
+      const C = rep.plan.camTeam, A = rep.partA, d = rep.frame('d1', t).p;
+      const o1 = (A || rep).frame('you', t).p, o2 = rep.frame('you', t).p;
+      // (on the pass it eases halfway over and pulls back, so the ball's flight to your man and you are both in it)
+      const u = rep.plan.pass ? smooth((t - (rep.plan.pass.t0 - 0.2)) / 0.7) : 0;
+      const look = o1.clone().lerp(d, 0.5).lerp(o2.clone().lerp(d, 0.5), 0.5 * u).add(V(C.lookOff.x, 0, C.lookOff.z)); look.y = C.lookY;
+      return { pos: look.clone().add(V(C.off.x, C.off.y, C.off.z).multiplyScalar(1 + 0.45 * u)), look, fov: C.fov };
+    }
     const y = rep.frame('you', t).p, d = rep.frame('d1', t).p;
     if (mode === 'duel') {
       // three-quarter view from one side (camAngle swings it round behind the shooter), just under head height,
