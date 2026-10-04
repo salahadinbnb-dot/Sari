@@ -59,7 +59,7 @@ export const REPS = {
   // 2 - hard first step at him; he drops back to stay in front; pull up while he's still going backwards
   heels: {
     simEnd: 4.2,
-    plan: { hold: [0, 0.05], dribble: [0.05, 0.5], gatherAt: 0.5, gatherDur: 0.22, shotClip: 3.38, flight: 1.2, read: 'heels', camRef: 0.6,
+    plan: { hold: [0, 0.05], dribble: [0.05, 0.5], gatherAt: 0.5, gatherDur: 0.22, shotClip: 3.38, flight: 1.2, read: 'heels', camRef: 0.6, camPush: 0.6,
       contest: { from: 1.5, rise: 0.3, to: 2.3, side: 'L', reach: 0.08, late: true } },
     build(clips, legs) {
       const segs = [{ clip: '78_32', from: 0.0, at: 0 },
@@ -79,7 +79,7 @@ export const REPS = {
   // 3 - crossover, he slides hard with it; stop and rise while his momentum is still carrying him sideways
   lean: {
     simEnd: 4.4,
-    plan: { dribble: [0, 1.15], gatherAt: 1.16, gatherDur: 0.22, shotClip: 3.38, flight: 1.2, read: 'lean', camRef: 1.05, camAngle: 1.15,
+    plan: { dribble: [0, 1.15], gatherAt: 1.16, gatherDur: 0.22, shotClip: 3.38, flight: 1.2, read: 'lean', camRef: 1.05, camPush: 0.6, camAngle: 1.15,
       // (no contest: he's still sliding away when the ball goes up)
     },
     build(clips, legs) {

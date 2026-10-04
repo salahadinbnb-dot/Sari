@@ -8,8 +8,8 @@ import * as THREE from 'three';
 import { BALL_R, footLock, ballistic } from './game2.js';
 
 const G = 9.81, HZ = 240, W0 = Math.sqrt(G / 0.95);
-// the jump shot's rise: from the dip at his waist to the set point (s)
-const RISE = 0.25;
+// the jump shot's rise: from the dip at his waist to the set point (s); it passes the set 0.15 s before the release
+const RISE = 0.36, SET_LEAD = 0.15, G9 = 9.81, HAND_V = 2.6, ROLL = 0.04, FLICK = 0.08;
 const UP = new THREE.Vector3(0, 1, 0);
 const clamp = (x, a, b) => Math.min(b, Math.max(a, x));
 const smooth = (t) => { t = clamp(t, 0, 1); return t * t * (3 - 2 * t); };
@@ -160,7 +160,7 @@ export class Rep {
     const sh = this.tracks.you.segs.find(s => s.shot);
     if (P0.shotClip !== undefined) {
       P0.release = sh.at + (P0.shotClip - sh.from) / sh.rate; P0.rim = P0.release + P0.flight; P0.netEnd = P0.rim + 0.26;
-      P0.setAt = P0.release - 0.26;
+      P0.setAt = P0.release - SET_LEAD;
     }
     if (P0.layup) {
       P0.release = sh.at + (P0.layup.releaseClip - sh.from) / sh.rate;
@@ -272,9 +272,9 @@ export class Rep {
     set.W = S.clone().addScaledVector(ang(Tc, -10, 25), L1).addScaledVector(UP, L2 * 0.99);
     set.B = ballOf(set.W, set.d, set.n);
     // release: arm up at the rim; follow-through: fingers down at the rim
-    const rel = { d: D(0.78, 0.62, 0), n: D(0.62, -0.78, 0) };
-    rel.W = S.clone().addScaledVector(ang(D, 62, 5), (L1 + L2) * 0.97);
-    const fol = { d: D(0.5, -0.86, 0), n: D(-0.86, -0.5, 0) };
+    const rel = { d: D(0.15, 0.99, 0), n: D(0.99, -0.15, 0) };
+    rel.W = S.clone().addScaledVector(ang(D, 70, 5), (L1 + L2) * 0.97);
+    const fol = { d: D(0.6, -0.8, 0), n: D(-0.8, -0.6, 0) };
     // the shooting elbow goes under the wrist (a hair in toward his chest), wherever the hand is: down under the
     // ball on the way up, straight under it at the set, pointing at the rim on the release
     const under = (W) => W.clone().addScaledVector(UP, -L2).addScaledVector(tr, -0.04).sub(S);
@@ -283,24 +283,46 @@ export class Rep {
     const gOff = { pos: SL.clone().addScaledVector(UP, (L1 + L2) * 0.78).addScaledVector(tf, 0.2).addScaledVector(left, 0.06), dir: Tc(0.3, 0.95, 0), palm: tr.clone() };
     // its elbow: under the hand and a little out to the left
     const gPole = (pos) => pos.clone().addScaledVector(UP, -L2 * 0.9).addScaledVector(left, 0.1).sub(SL);
+    // One motion, no hitch: the ball rides a smooth path (a cubic through the dip, the set point and the release,
+    // relative to his shoulder so it goes up with the jump) and never stops at the set - it is still rising through
+    // it, the arm extends straight on into the release and the hand is moving at the release. In its last 0.07 s the
+    // ball eases onto its own flight line, so it leaves the fingers at the flight's speed instead of jumping out of
+    // a slow hand.
+    const k = this.dip(), tD = k.t, tS = P0.setAt, tR = P0.release;
+    const b0 = k.b, bS = set.B.clone().sub(S), bR = ballOf(rel.W, rel.d, rel.n).sub(S);
+    const lift = D(0.55, 0.83, 0), herm = (p0, p1, m0, m1, u) => {
+      const u2 = u * u, u3 = u2 * u;
+      return p0.clone().multiplyScalar(2 * u3 - 3 * u2 + 1).addScaledVector(m0, u3 - 2 * u2 + u).addScaledVector(p1, -2 * u3 + 3 * u2).addScaledVector(m1, u3 - u2);
+    };
+    const vS = bR.clone().sub(b0).multiplyScalar(1 / (tR - tD)); // through the set: Catmull-Rom
     let B, d, n, pole, G;
-    if (t < P0.setAt) {
-      // the rise: straight up the front of him from the dip into the set (bowed out a touch to clear his face)
-      const k = this.dip(), s = smooth((t - k.t) / RISE), s2 = smooth((t - k.t) / (RISE * 0.7));
-      B = S.clone().add(k.b.clone().lerp(set.B.clone().sub(S), s)).addScaledVector(f, 0.05 * Math.sin(Math.PI * s));
+    if (t < tS) {
+      const u = clamp((t - tD) / (tS - tD), 0, 1), s2 = smooth((t - tD) / ((tS - tD) * 0.7));
+      B = S.clone().add(herm(b0, bS, bS.clone().sub(b0).multiplyScalar(0.25), vS.clone().multiplyScalar(tS - tD), u)).addScaledVector(f, 0.05 * Math.sin(Math.PI * u));
       d = nlerp(k.R.dir, set.d, s2); n = nlerp(k.R.palm, set.n, s2);
       // elbow: from where the performer had it to under the hand
       pole = nlerp(k.poleR, under(wristOf(B, d, n)).normalize(), s2);
       const g = gOn(B), gp = B.clone().add(k.L.off.clone().lerp(g.pos.clone().sub(B), s2));
       G = { pos: gp, dir: nlerp(k.L.dir, g.dir, s2), palm: nlerp(k.L.palm, g.palm, s2), pole: nlerp(k.poleL, gPole(gp).normalize(), s2) };
-    } else if (t <= P0.release) {
-      const u = Math.pow(smooth((t - P0.setAt) / (P0.release - P0.setAt)), 1.4);
-      const W = set.W.clone().lerp(rel.W, u); d = nlerp(set.d, rel.d, u); n = nlerp(set.n, rel.n, u); pole = under(W);
+    } else if (t <= tR) {
+      // the extension: the wrist rides the curve from the set to the release (still going up through the set), the
+      // hand a tray under the ball until the last 0.08 s, then the wrist flicks - fingers up, palm to the rim - and
+      // the ball goes up and out off the fingers
+      const u = clamp((t - tS) / (tR - tS), 0, 1), e = smooth((t - (tR - FLICK)) / FLICK);
+      const W = S.clone().add(herm(set.W.clone().sub(S), rel.W.clone().sub(S), vS.clone().multiplyScalar(tR - tS), lift.clone().multiplyScalar(HAND_V * (tR - tS)), u));
+      d = nlerp(set.d, rel.d, e); n = nlerp(set.n, rel.n, e);
       B = ballOf(W, d, n);
+      // off the fingertips: in its last 0.04 s the ball rolls out ahead along its flight line, speeding up from the
+      // hand's speed to the flight's, and leaves ~12 cm out
+      const F = this.flightOut && this.flightOut();
+      if (F && t > tR - ROLL) { const x = t - (tR - ROLL); B.addScaledVector(F.dir, F.extra * x * x / (2 * ROLL)); }
+      pole = under(wristOf(B, d, n));
     } else {
-      const u = smooth((t - P0.release) / 0.09);
-      d = nlerp(rel.d, fol.d, u); n = nlerp(rel.n, fol.n, u); pole = under(rel.W);
-      B = ballOf(rel.W, d, n);
+      // follow-through: the hand carries on a few cm along the flight and stops, the wrist snaps down (gooseneck),
+      // the arm stays up until he lands
+      const u = smooth((t - tR) / 0.12), W = rel.W.clone().addScaledVector(lift, 0.07 * u);
+      d = nlerp(rel.d, fol.d, smooth((t - tR) / 0.1)); n = nlerp(rel.n, fol.n, smooth((t - tR) / 0.1)); pole = under(W);
+      B = ballOf(W, d, n);
     }
     // keep the ball off his head (skull ~11 cm round about 9 cm above the head joint)
     const C = H.clone().addScaledVector(UP, 0.09).addScaledVector(f, 0.03), v = B.clone().sub(C), gap = v.length(), need = BALL_R + 0.115;
@@ -372,9 +394,22 @@ export class Rep {
     const d = Math.min(tt, 1.6), drift = this.dropDir || V(0.3, 0, 0.45);
     return { B: V(0.01 + drift.x * d - 0.07 * d * d, Math.max(BALL_R, y), 0.08 + drift.z * d - 0.1 * d * d), state: 'drop' };
   }
+  // the ball's flight from the release: start point (where the hand carries it to) and launch velocity
+  flightOut() {
+    const P0 = this.plan; if (P0.layup || P0.shotClip === undefined) return null;
+    if (!this._fo) {
+      this._fo = 'busy'; // (the hand path's release point, before the ball rolls off the fingers)
+      const p0 = this.shotArm(P0.release).B, q = V(RIM.x + 0.01, RIM.y + 0.1, RIM.z + 0.02), T = P0.rim - P0.release;
+      const vel = (p) => V((q.x - p.x) / T, (q.y - p.y + 0.5 * G9 * T * T) / T, (q.z - p.z) / T);
+      let v = vel(p0), dir = v.clone().normalize(), extra = Math.max(0, v.length() - HAND_V);
+      const p = p0.clone().addScaledVector(dir, extra * ROLL / 2); v = vel(p);
+      this._fo = { p, v, dir, extra };
+    }
+    return this._fo === 'busy' ? null : this._fo;
+  }
   shotBall(t) {
     const P0 = this.plan;
-    if (!this._rel) { this._rel = this.shotArm(P0.release - 1e-4).B; this._rim = V(RIM.x + 0.01, RIM.y + 0.1, RIM.z + 0.02); }
+    if (!this._rel) { this._rel = this.flightOut().p.clone(); this._rim = V(RIM.x + 0.01, RIM.y + 0.1, RIM.z + 0.02); }
     if (t < P0.rim) return { B: ballistic(this._rel, this._rim, P0.release, P0.rim, t), state: 'shot' };
     if (t < P0.netEnd) { const u = clamp((t - P0.rim) / (P0.netEnd - P0.rim), 0, 1); return { B: V(0.01 * (1 - u), RIM.y + 0.1 - 0.64 * (u * u * 0.5 + u * 0.5), 0.02 + 0.06 * u), state: 'net', netU: u }; }
     return this.dropAfter(t);

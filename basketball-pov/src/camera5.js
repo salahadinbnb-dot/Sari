@@ -29,7 +29,17 @@ export class Cam5 {
       const dist = Math.max(4.1, (across + 1.5) / 0.573);
       const pos = mid.clone().addScaledVector(dir, dist); pos.y = HC;
       const look = mid.clone(); look.y = HC - dist * Math.tan(Math.atan(HC / dist) - FEET);
-      return { pos, look, fov: 54 };
+      // through the shot it tilts up so the set, the release and the follow-through stay in the picture
+      const P = rep.plan;
+      // and pushes in a little toward the shooter, so the form is big enough to read
+      let fov = 54;
+      if (P.setAt !== undefined && !P.contact) {
+        const up = smooth((t - (P.setAt - 0.55)) / 0.4) * (1 - smooth((t - (P.land + 0.15)) / 0.4));
+        const k = P.camPush ?? 1; // less where the defender is further off and has to stay in the picture
+        look.y += 0.8 * up; pos.y += 0.25 * up; fov -= 9 * up * k;
+        const yy = y.clone().setY(look.y); look.lerp(yy, 0.3 * up * k);
+      }
+      return { pos, look, fov };
     }
     if (mode === 'rim') {
       // off to the side of the rim on the shooter's half, a little under it: the ball crosses the frame and drops in
