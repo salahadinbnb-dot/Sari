@@ -48,9 +48,9 @@ html, body { margin: 0; padding: 0; background: #000; overflow: hidden; }
 .ov .dot { fill: var(--green); stroke: #04150a; stroke-width: 3; }
 .ov .deg { font-family: 'BC'; font-weight: 900; font-size: 54px; fill: var(--green); text-anchor: middle; paint-order: stroke; stroke: rgba(0,0,0,0.85); stroke-width: 9px; }
 
-/* reach gauge: a tape from 8 ft to 12 ft on the right edge, the rim at 10 ft */
+/* reach gauge: a tape from 8 ft to 12 ft 6 on the right edge, the rim at 10 ft (placed by hud6.js) */
 .gauge { right: 34px; top: 0; width: 90px; height: 1920px; }
-.gauge .rail { position: absolute; right: 30px; top: 320px; height: 980px; width: 6px; background: rgba(255,255,255,0.35); border-radius: 3px; box-shadow: 0 0 10px rgba(0,0,0,0.6); }
+.gauge .rail { position: absolute; right: 30px; width: 6px; background: rgba(255,255,255,0.35); border-radius: 3px; box-shadow: 0 0 10px rgba(0,0,0,0.6); }
 .gauge .tick { position: absolute; right: 30px; width: 18px; height: 3px; margin-top: -1px; background: rgba(255,255,255,0.6); }
 .gauge .tick.big { width: 30px; height: 4px; background: #fff; }
 .gauge .ft { position: absolute; right: 66px; margin-top: -20px; font-weight: 800; font-size: 32px; color: rgba(255,255,255,0.85); text-shadow: 0 2px 6px rgba(0,0,0,0.9); }

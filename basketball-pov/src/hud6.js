@@ -10,7 +10,8 @@ import { RIM } from './rep6.js';
 const el = (tag, cls, html = '') => { const e = document.createElement(tag); if (cls) e.className = cls; e.innerHTML = html; return e; };
 const IN = 39.3701, MPH = 2.23694;
 const ftin = (m) => { const i = Math.round(m * IN); return `${Math.floor(i / 12)}'${i % 12}"`; };
-const G0 = 2.44, G1 = 3.66, GT = 330, GB = 1290; // gauge: 8'0" .. 12'0" from y=GB up to y=GT
+// gauge: 8'0" .. 12'6" from y=GB up to y=GT, kept below the captions (a three-line caption ends near y=500)
+const G0 = 2.44, G1 = 3.81, GT = 540, GB = 1450;
 
 export class Hud6 {
   constructor(root, reps, frames, fps) {
@@ -37,8 +38,8 @@ export class Hud6 {
   fill(s) { return s.replace(/\{(\w+)\.(\w+)\}/g, (_, r, k) => this.vals[r][k]); }
   buildGauge() {
     const y = (m) => GB - (m - G0) / (G1 - G0) * (GB - GT);
-    let h = '<div class="rail"></div>';
-    for (let i = 0; i <= 48; i += 3) { const m = G0 + i * 0.0254, big = i % 12 === 0; h += `<div class="tick${big ? ' big' : ''}" style="top:${y(m)}px"></div>`; if (big) h += `<div class="ft" style="top:${y(m)}px">${8 + i / 12}'</div>`; }
+    let h = `<div class="rail" style="top:${GT - 10}px;height:${GB - GT + 20}px"></div>`;
+    for (let i = 0; i <= 54; i += 3) { const m = G0 + i * 0.0254, big = i % 12 === 0; h += `<div class="tick${big ? ' big' : ''}" style="top:${y(m)}px"></div>`; if (big) h += `<div class="ft" style="top:${y(m)}px">${8 + i / 12}'</div>`; }
     h += `<div class="rimline" style="top:${y(3.048)}px"><span>RIM 10'</span></div><div class="mark"><span></span></div><div class="glow"></div>`;
     this.gauge.innerHTML = h; this.gy = y;
   }
@@ -88,6 +89,9 @@ export class Hud6 {
     mk.style.top = yy + 'px'; mk.querySelector('span').textContent = (rep.plan.kind === 'dunk' ? 'BALL ' : 'REACH ') + ftin(this.best);
     mk.classList.toggle('over', this.best > 3.048);
     const gl = this.gauge.querySelector('.glow'); gl.style.top = yy + 'px'; gl.style.height = Math.max(0, GB - yy) + 'px';
+    // the rim's tag and the foot marks step aside while the reach tag goes past them
+    this.gauge.querySelector('.rimline span').style.opacity = String(clamp((Math.abs(yy - this.gy(3.048)) - 30) / 30, 0, 1));
+    for (const ft of this.gauge.querySelectorAll('.ft')) ft.style.opacity = String(clamp((Math.abs(yy - parseFloat(ft.style.top)) - 44) / 20, 0, 1));
     // overlays on the picture
     this.drawOverlays(fr, st, cam);
   }
