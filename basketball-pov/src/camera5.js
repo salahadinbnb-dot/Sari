@@ -10,9 +10,11 @@ const RIM = V(0, 3.05, 0);
 export class Cam5 {
   constructor(reps) {
     this.reps = reps; this.paths = {};
-    for (const [name, rep] of Object.entries(reps)) for (const mode of rep.plan.contact ? ['finish'] : ['duel', 'rim']) this.paths[name + ':' + mode] = this.bake(rep, mode);
+    for (const [name, rep] of Object.entries(reps)) for (const mode of rep.plan.contact ? ['finish'] : ['duel', 'rim'].concat(rep.plan.camTeam ? ['team'] : [])) this.paths[name + ':' + mode] = this.bake(rep, mode);
   }
   ideal(rep, mode, t) {
+    // team: a fixed high view from behind the top of the key that holds the whole play
+    if (mode === 'team') { const C = rep.plan.camTeam; return { pos: V(C.pos.x, C.pos.y, C.pos.z), look: V(C.look.x, C.look.y, C.look.z), fov: C.fov }; }
     const y = rep.frame('you', t).p, d = rep.frame('d1', t).p;
     if (mode === 'duel') {
       // three-quarter view from one side (camAngle swings it round behind the shooter), just under head height,
@@ -58,7 +60,7 @@ export class Cam5 {
     return { pos, look: mid.lerp(V(0.5, 2.3, 0.35), u), fov: 48 + 10 * smooth((t - 0.3) / (c.t - 0.3)) + 4 * u };
   }
   bake(rep, mode) {
-    const dt = 1 / 240, lead = mode === 'duel' ? 0.3 : 0.2, track = [], end = rep.plan.simEnd, wp = mode === 'duel' ? 3.2 : 2.2, wl = { duel: 4.2, rim: 3.4, finish: 5.5 }[mode];
+    const dt = 1 / 240, lead = mode === 'duel' ? 0.3 : 0.2, track = [], end = rep.plan.simEnd, wp = mode === 'duel' ? 3.2 : 2.2, wl = { duel: 4.2, rim: 3.4, finish: 5.5, team: 3.0 }[mode];
     let pos = null, look = null; const vp = V(), vl = V();
     const step = (x, v, target, om) => { const f = 1 + 2 * dt * om, oo = om * om, hoo = dt * oo, hhoo = dt * hoo, detInv = 1 / (f + hhoo); return [(f * x + dt * v + hhoo * target) * detInv, (v + hoo * (target - x)) * detInv]; };
     for (let t = 0; t <= end + 1e-6; t += dt) {

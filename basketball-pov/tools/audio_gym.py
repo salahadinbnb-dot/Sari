@@ -4,7 +4,7 @@ Room tone (air handling hum and hiss), every dribble with the long slap-back of 
 the release, the swish and the bounces after it; for the v5 film-room clip also the ball off the glass, a body
 collision, the referee's whistle and a freeze-frame accent (each only if the events file lists them). Shots played in slow motion get their hits pitched down and
 stretched like slow-mo footage, and each cut gets a soft swoosh.
-usage: python3 tools/audio_gym.py out/events4.json out/audio4.wav   (v5: out/events5.json out/audio5.wav; v7 adds pokes)
+usage: python3 tools/audio_gym.py out/events4.json out/audio4.wav   (v5: out/events5.json out/audio5.wav; v7 adds pokes; v9 rim clanks)
 """
 import json, sys, wave
 import numpy as np
@@ -117,6 +117,19 @@ def bank():
     return x / np.max(np.abs(x))
 
 
+def clank():
+    """Off the front of the rim: a hard metallic hit - a few inharmonic partials of the ring ringing out - with the
+    net's rattle under it."""
+    n = int(0.9 * SR); t = np.arange(n) / SR
+    ring = sum(a * np.sin(2 * np.pi * f * t + p) * np.exp(-t / d) for f, a, d, p in
+               [(612, 1.0, 0.22, 0.0), (1497, 0.55, 0.14, 1.1), (2410, 0.35, 0.09, 0.4), (3330, 0.22, 0.06, 2.0), (4270, 0.12, 0.04, 0.7)])
+    hit = bp(rng.standard_normal(n), 900, 5000) * np.exp(-t / 0.006) * 1.2
+    thump = np.sin(2 * np.pi * 150 * t) * np.exp(-t / 0.02) * 0.6
+    rattle = bp(rng.standard_normal(n), 2500, 7000) * np.exp(-t / 0.12) * 0.12 * (0.6 + 0.4 * np.sin(2 * np.pi * 23 * t))
+    x = ring + hit + thump + rattle
+    return x / np.max(np.abs(x))
+
+
 def thud():
     """Bodies colliding: a low chest thump, the air knocked out, a scuff of rubber."""
     n = int(0.45 * SR); t = np.arange(n) / SR
@@ -173,6 +186,8 @@ for c in ev.get('cuts', []):
     place(mix, swoosh(), c['t'] - 0.25, db(-24))
 for b in ev.get('board', []):
     place(mix, verb(slow(bank(), b.get('rate', 1)), 0.4), b['t'], db(-11), pan=0.05)
+for r in ev.get('rims', []):
+    place(mix, verb(slow(clank(), r.get('rate', 1)), 0.42), r['t'], db(-9), pan=0.05)
 for c in ev.get('thuds', []):
     place(mix, verb(slow(thud(), c.get('rate', 1)), 0.3), c['t'], db(-11))
     place(mix, verb(slow(squeak(), c.get('rate', 1)), 0.45), c['t'] + 0.03, db(-18), pan=0.2)

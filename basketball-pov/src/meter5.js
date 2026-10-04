@@ -30,7 +30,8 @@ function rounded(h, r, steps = 6) {
 const norm = (v) => { const l = Math.hypot(v[0], v[1]) || 1; return [v[0] / l, v[1] / l]; };
 
 export class FloorMeter {
-  constructor(scene) {
+  constructor(scene, opts = {}) {
+    this.invert = !!opts.invert;
     this.group = new THREE.Group(); this.group.renderOrder = 5; scene.add(this.group);
     const mat = (opacity) => new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity, depthWrite: false, toneMapped: false,
       polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4, side: THREE.DoubleSide });
@@ -42,7 +43,8 @@ export class FloorMeter {
     for (const o of [this.dot, this.ring]) { o.renderOrder = 6; o.frustumCulled = false; this.group.add(o); }
   }
   setColor(open, alpha) {
-    const c = RED.clone().lerp(GREEN, open).multiplyScalar(1.7);
+    // (invert: the defender is you, so his balance is the good news - green while he's set, red once he's beat)
+    const c = RED.clone().lerp(GREEN, this.invert ? 1 - open : open).multiplyScalar(1.7);
     for (const m of [this.mFill, this.mLine, this.mDot, this.mGlow]) m.color.copy(c);
     this.mFill.opacity = 0.24 * alpha; this.mLine.opacity = alpha; this.mDot.opacity = alpha; this.mGlow.opacity = 0.4 * alpha;
   }

@@ -339,6 +339,8 @@ export class Rep {
   }
   handsAndBall(t) {
     const P0 = this.plan, P = this.pushes;
+    // a kick-out (plan.passOut): the ball leaves his hands at the release and another rep takes it from there
+    if (P0.passOut && t >= P0.release) return { B: this.heldBall(P0.release - 1e-3), state: 'gone', ov: {} };
     // the pass: in the air until the catch; hands up as a target, then they take it in
     if (P0.pass && t < P0.pass.t1) {
       const C = this.catchPoint(), from = V(P0.pass.from.x, P0.pass.from.y, P0.pass.from.z);
@@ -403,7 +405,7 @@ export class Rep {
     const P0 = this.plan; if (P0.layup || P0.shotClip === undefined) return null;
     if (!this._fo) {
       this._fo = 'busy'; // (the hand path's release point, before the ball rolls off the fingers)
-      const p0 = this.shotArm(P0.release).B, q = V(RIM.x + 0.01, RIM.y + 0.1, RIM.z + 0.02), T = P0.rim - P0.release;
+      const p0 = this.shotArm(P0.release).B, q = P0.miss ? this.missPoint() : V(RIM.x + 0.01, RIM.y + 0.1, RIM.z + 0.02), T = P0.rim - P0.release;
       const vel = (p) => V((q.x - p.x) / T, (q.y - p.y + 0.5 * G9 * T * T) / T, (q.z - p.z) / T);
       let v = vel(p0), dir = v.clone().normalize(), extra = Math.max(0, v.length() - HAND_V);
       const p = p0.clone().addScaledVector(dir, extra * ROLL / 2); v = vel(p);
@@ -411,9 +413,38 @@ export class Rep {
     }
     return this._fo === 'busy' ? null : this._fo;
   }
+  // a miss (plan.miss): the ball comes in a touch short and catches the front of the rim, where its centre sits just
+  // outside the ring and above it; (plan.miss.side, in metres: + to the shooter's right) shades it left or right
+  missPoint() {
+    const P0 = this.plan, h = this.tab('hip', P0.release), s = V(h.x - RIM.x, 0, h.z - RIM.z).normalize(), r = V(s.z, 0, -s.x);
+    return RIM.clone().addScaledVector(s, 0.2286 + 0.075).addScaledVector(UP, 0.095).addScaledVector(r, P0.miss.side || 0);
+  }
+  // ...and off it: reflected about the contact normal (restitution 0.55), then free - gravity, floor bounces
+  // (restitution 0.62, a little friction each time) and a roll; tabulated once
+  missBall(t) {
+    const P0 = this.plan;
+    if (!this._miss) {
+      const q = this.missPoint(), T = P0.rim - P0.release, a = this._rel;
+      const vin = V((q.x - a.x) / T, (q.y - a.y + 0.5 * G9 * T * T) / T - G9 * T, (q.z - a.z) / T);
+      const h = this.tab('hip', P0.release), s = V(h.x - RIM.x, 0, h.z - RIM.z).normalize();
+      const n = s.clone().multiplyScalar(0.075).addScaledVector(UP, 0.095).normalize();
+      const vout = vin.clone().addScaledVector(n, -(1 + 0.55) * vin.dot(n)).addScaledVector(V(s.z, 0, -s.x), (P0.miss.kick ?? 0.35));
+      const dt = 1 / HZ, pts = [], hits = []; let p = q.clone(), v = vout.clone();
+      for (let tt = P0.rim; tt <= P0.simEnd + 1e-6; tt += dt) {
+        pts.push(p.clone());
+        v.y -= G9 * dt; p.addScaledVector(v, dt);
+        if (p.y < BALL_R && v.y < 0) { p.y = BALL_R; if (v.y < -0.4) hits.push({ t: tt, v: -v.y }); v.y = -v.y * 0.62; v.x *= 0.82; v.z *= 0.82; if (v.y < 0.3) v.y = 0; }
+        if (p.y <= BALL_R + 1e-4 && v.y === 0) { v.x *= 1 - 0.9 * dt; v.z *= 1 - 0.9 * dt; }
+      }
+      this._miss = { pts, hits };
+    }
+    const M = this._miss, i = clamp(Math.round((t - P0.rim) * HZ), 0, M.pts.length - 1);
+    return { B: M.pts[i].clone(), state: 'loose' };
+  }
   shotBall(t) {
     const P0 = this.plan;
-    if (!this._rel) { this._rel = this.flightOut().p.clone(); this._rim = V(RIM.x + 0.01, RIM.y + 0.1, RIM.z + 0.02); }
+    if (P0.miss && t >= P0.rim) { if (!this._rel) this.shotBall(P0.release); return this.missBall(t); }
+    if (!this._rel) { this._rel = this.flightOut().p.clone(); this._rim = P0.miss ? this.missPoint() : V(RIM.x + 0.01, RIM.y + 0.1, RIM.z + 0.02); }
     if (t < P0.rim) return { B: ballistic(this._rel, this._rim, P0.release, P0.rim, t), state: 'shot' };
     if (t < P0.netEnd) { const u = clamp((t - P0.rim) / (P0.netEnd - P0.rim), 0, 1); return { B: V(0.01 * (1 - u), RIM.y + 0.1 - 0.64 * (u * u * 0.5 + u * 0.5), 0.02 + 0.06 * u), state: 'net', netU: u }; }
     return this.dropAfter(t);
