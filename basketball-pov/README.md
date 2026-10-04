@@ -2,7 +2,8 @@
 
 2K-style gameplay clips and breakdowns, rendered from three.js and driven by real motion capture.
 
-- **v6 (latest): film room, "Get Up".** How to approach the rim, a rim touch, then a tomahawk dunk, with the skeleton in the gym. [`out/get_up.mp4`](out/get_up.mp4) (1080×1920 portrait, 30 fps, H.264 + AAC)
+- **v7 (latest): film room, "Get Your Hands On It".** Steals against a good dribbler, when he's beaten you, and off the ball, with the skeletons in the gym. [`out/hands_on_it.mp4`](out/hands_on_it.mp4) (1080×1920 portrait, 30 fps, H.264 + AAC)
+- v6: film room, "Get Up". How to approach the rim, a rim touch, then a tomahawk dunk, with the skeleton in the gym. [`out/get_up.mp4`](out/get_up.mp4) (1080×1920 portrait, 30 fps, H.264 + AAC)
 - v5: film room, "Read his weight". When to shoot, when not to, and how to finish through contact, with the skeletons in the gym. [`out/read_his_weight.mp4`](out/read_his_weight.mp4) (1080×1920 portrait, 30 fps, H.264 + AAC)
 - v4: skeletons hooping in a practice gym, shot like a phone clip. [`out/skeleton_gym.mp4`](out/skeleton_gym.mp4) (1080×1920 portrait, 30 fps, H.264 + AAC)
 - v3: tweener, cross, cross, step-back three, from the side. [`out/tweener.mp4`](out/tweener.mp4) (1920×1080, 60 fps, H.264 + AAC)
@@ -23,6 +24,40 @@ It writes three files:
 - `clip_overlay.mp4`: the footage with the tracked skeleton drawn on it.
 - `clip_pose.mp4`: the skeleton alone on black, the pose-reference format that AI video tools take.
 - `clip.json`: per-frame 2D image landmarks with visibility, plus 3D world landmarks in metres around the hips.
+
+## v7: what it shows
+
+A film-room breakdown of steals, in three reps. A ring on the ball is red while he has it covered (in his hand, or on
+his side with his body in the way) and green while it's actually in your reach. A strip along the bottom shows the
+whole dribble that way, with the steal marked.
+
+| Rep | What it shows |
+|---|---|
+| 1 · On the ball | A good dribbler works the ball on his right side. Reaching there gets you beaten or called for a foul, because his hand is on the ball 54% of the time and his body covers the rest. It only comes into reach when he crosses it over in front of him, for 0.11 s on its way up into his other hand. You swipe up through it with the hand on the side it's going, and go after it. |
+| 2 · He beat you | He's got a step on you on a drive. Don't reach across him. Run with him on the ball side: his off arm covers the front, nothing covers the back. Tip it forward with your inside hand as it comes up off the floor. |
+| 3 · Off the ball | The passer picks up his dribble and throws to the wing. You've sagged a step off the passing line so it looks open, you leave on his windup and catch it in front of your man. A race at the bottom: you need 0.63 s, the ball 0.39 s, so leaving on the throw is 0.24 s late. |
+
+The numbers come from:
+
+- **Steal types:** Squared Statistics, "Analyzing steals in the 2016-17 NBA season". Of 18,950 steals, 12,154 came off passes (off-ball) and 6,586 off the dribble (on-ball).
+- **Reaction time:** Singh 2020 (Int J Physiol Nutr Phys Educ 5(1):174-176). The mean visual reaction time of 45 basketball players was 0.225 s. That's longer than the 0.11 s the crossover is in reach, so you have to be there before he crosses.
+- **Technique:** swipe up (a downward swipe is the one that gets called), only from the ball side when you trail (reaching across is a foul), and tip it ahead.
+- **Measured in the scene:** the in-reach window, the hand-on-ball share and the race are measured from the motion. In reach means the ball is in the air, on its way up, and within arm plus hand plus ball of your nearer shoulder.
+
+## How v7 is made
+
+- **Motion:** whole real takes (CMU mocap), placed off the moment of the steal so the reach is real.
+  - On the ball: the dribbler is 06_13 (low, fast freestyle dribbling, about 25 real crossovers). The rep takes the stretch at 34.85 s, with right-hand dribbles and then a crossover 0.5 m in front of his hips. The defender is a stance (78_24) into 78_30's slide and stop, then 78_27's push-off to chase the loose ball.
+  - He beat you: the drive is 78_32 (a straight drive from a stop, right hand, about 4 m/s). The defender is 78_25's sprint, half a step behind on the ball side.
+  - Off the ball: the passer is 06_13's opening (dribbling in place). The receiver is 78_24's stance, kept alive. The defender holds his stance and then bursts with 78_27's push-off on the windup.
+- **Placement:** `src/play7.js` finds the strike from the dribbler's own pushes (on the way up after the cross, or after his second dribble on the drive). It then places the defender so his shoulder is a set distance from the ball at that moment, facing the dribbler (or running with him). For the pass, the catch point is two-thirds of the way along the line, and he's anchored there at the catch time.
+- **Ball and hands:** `src/rep7.js`.
+  - The dribble comes off the handler's hands: pushes are found in the take and the flights run between them, down to the floor and up into the next hand.
+  - The defender's swipe: ready low with the palm up, accelerating up into the ball, then a follow-through.
+  - After the poke the ball is free: gravity, bounces on the floor (restitution 0.78) and a roll.
+  - The pass: a two-hand pick-up and windup, a chest pass at 7.5 m/s with a slight arc, and a two-hand catch on the line.
+- **Overlays and edit:** `src/hud7.js` and `src/hud7.css` (ring, ball strip, race, captions, cards), `src/camera7.js` (over your shoulder on the ball, chasing the drive, up behind the passer), `src/timeline7.js` (the edit).
+- **Sound:** `tools/audio_gym.py`, the v5 gym sound plus a hand-on-ball poke.
 
 ## v6: what it shows
 
@@ -215,6 +250,8 @@ A right-wing isolation with the clock running out and your team down two.
 npm install
 pip install pillow numpy scipy imageio-ffmpeg trimesh networkx mediapipe
 npm run assets      # Rocketbox models + uniforms, CMU mocap clips
+npm run preview:v7  # quick 540x960 check of v7
+npm run render:v7   # final 1080x1920 v7 with audio -> out/hands_on_it.mp4
 npm run preview:v6  # quick 540x960 check of v6
 npm run render:v6   # final 1080x1920 v6 with audio -> out/get_up.mp4
 npm run preview:v5  # quick 540x960 check of v5
