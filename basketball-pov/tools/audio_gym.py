@@ -4,7 +4,7 @@ Room tone (air handling hum and hiss), every dribble with the long slap-back of 
 the release, the swish and the bounces after it; for the v5 film-room clip also the ball off the glass, a body
 collision, the referee's whistle and a freeze-frame accent (each only if the events file lists them). Shots played in slow motion get their hits pitched down and
 stretched like slow-mo footage, and each cut gets a soft swoosh.
-usage: python3 tools/audio_gym.py out/events4.json out/audio4.wav   (v5: out/events5.json out/audio5.wav)
+usage: python3 tools/audio_gym.py out/events4.json out/audio4.wav   (v5: out/events5.json out/audio5.wav; v7 adds pokes)
 """
 import json, sys, wave
 import numpy as np
@@ -178,6 +178,10 @@ for c in ev.get('thuds', []):
     place(mix, verb(slow(squeak(), c.get('rate', 1)), 0.45), c['t'] + 0.03, db(-18), pan=0.2)
 for w in ev.get('whistles', []):
     place(mix, verb(whistle(), 0.5), w['t'], db(-15), pan=-0.25)
+for p in ev.get('pokes', []):
+    # v7: a hand knocking the ball loose - a sharp slap, a little brighter than a catch, and the swipe's air
+    place(mix, verb(slow(slap(), p.get('rate', 1)), 0.3), p['t'], db(-9))
+    place(mix, verb(slow(whff(), p.get('rate', 1)), 0.25), p['t'] - 0.05, db(-20))
 for f in ev.get('freezes', []):
     place(mix, freeze(), f['t'] - 0.27, db(-24))
 
