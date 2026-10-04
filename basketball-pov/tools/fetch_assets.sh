@@ -29,14 +29,14 @@ PY
 node tools/export_mesh.mjs
 python3 tools/bake.py
 python3 tools/prep_textures.py
-# CMU Graphics Lab motion capture (free for any use): skeletons + the clips v2-v5 use
+# CMU Graphics Lab motion capture (free for any use): skeletons + the clips v2-v6 use
 mkdir -p assets/mocap
-for f in 06/06.asf 78/78.asf 124/124.asf 06/06_06.amc 06/06_15.amc 124/124_06.amc \
+for f in 06/06.asf 78/78.asf 124/124.asf 127/127.asf 06/06_06.amc 06/06_15.amc 124/124_06.amc 127/127_04.amc \
          78/78_20.amc 78/78_22.amc 78/78_25.amc 78/78_27.amc 78/78_30.amc 78/78_32.amc 78/78_12.amc \
          06/06_04.amc 06/06_13.amc 124/124_05.amc 78/78_28.amc 06/06_14.amc 78/78_26.amc; do
   n=$(basename "$f"); [ -s "assets/mocap/$n" ] || curl -sf -o "assets/mocap/$n" "http://mocap.cs.cmu.edu/subjects/$f"
 done
-python3 tools/mocap.py 06_06 06_15 124_06 78_20 78_22 78_25 78_27 78_30 78_32 78_12 06_04 06_13 124_05 78_28 06_14 78_26
+python3 tools/mocap.py 06_06 06_15 124_06 78_20 78_22 78_25 78_27 78_30 78_32 78_12 06_04 06_13 124_05 78_28 06_14 78_26 127_04
 # Anatomical bone meshes for v4: the OpenSim full-body model (Rajagopal et al. 2016) from opensim-org/opensim-models,
 # posed and exported by tools/bones.py (needs: pip install trimesh networkx scipy)
 if [ ! -s assets/bones/bones.bin ]; then

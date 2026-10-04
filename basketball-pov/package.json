@@ -1,8 +1,10 @@
 {
   "name": "basketball-pov",
   "version": "1.0.0",
-  "description": "2K-style and phone-style basketball clips (three.js, rendered headless to MP4) driven by real motion capture: v5 is a film-room clip on reading a defender's weight (when to shoot, contact finishes), v4 anatomical skeletons in a practice gym, v3 a tweener-cross-cross step-back three from the side, v2 a behind-the-player 1v1 breakdown.",
+  "description": "2K-style and phone-style basketball clips (three.js, rendered headless to MP4) driven by real motion capture: v6 is a film-room clip on the approach and the dunk (rim touch, then a tomahawk), v5 reading a defender's weight (when to shoot, contact finishes), v4 anatomical skeletons in a practice gym, v3 a tweener-cross-cross step-back three from the side, v2 a behind-the-player 1v1 breakdown.",
   "scripts": {
+    "render:v6": "node tools/events2.mjs src/index6.html out/events6.json && python3 tools/audio_dunk.py out/events6.json out/audio6.wav && node tools/render.mjs --page src/index6.html --viewport 1080x1920 --size 1080x1920 --crf 23 --out out/get_up_silent.mp4 --workers 3 && bash tools/mux.sh out/get_up_silent.mp4 out/audio6.wav out/get_up.mp4",
+    "preview:v6": "node tools/render.mjs --page src/index6.html --q 'half&sub=1' --viewport 1080x1920 --size 540x960 --step 2 --workers 3 --out out/preview_v6.mp4",
     "assets": "bash tools/fetch_assets.sh",
     "render:v5": "node tools/events2.mjs src/index5.html out/events5.json && python3 tools/audio_gym.py out/events5.json out/audio5.wav && node tools/render.mjs --page src/index5.html --viewport 1080x1920 --size 1080x1920 --crf 23 --out out/read_his_weight_silent.mp4 --workers 3 && bash tools/mux.sh out/read_his_weight_silent.mp4 out/audio5.wav out/read_his_weight.mp4",
     "preview:v5": "node tools/render.mjs --page src/index5.html --q 'half&sub=1' --viewport 1080x1920 --size 540x960 --step 2 --workers 3 --out out/preview_v5.mp4",

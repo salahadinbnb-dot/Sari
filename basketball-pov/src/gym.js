@@ -51,12 +51,15 @@ function blockTexture(seed, w = 2048, h = 1024) {
   return t;
 }
 
+// The hoop. The backboard assembly (glass, frame, arms) is one group so it can shake, and the rim sits on a hinge at
+// the board (a breakaway rim): rotating rimPivot about x pulls the front of the rim down.
 function buildGymHoop(scene) {
   const C = COURT, g = new THREE.Group();
   const orange = new THREE.MeshStandardMaterial({ color: 0xd9481a, roughness: 0.4, metalness: 0.55 });
+  const rimPivot = new THREE.Group(); rimPivot.position.set(0, C.rimY, C.boardZ + 0.01); g.add(rimPivot);
   const rim = new THREE.Mesh(new THREE.TorusGeometry(C.rimR + 0.009, 0.0095, 12, 64), orange);
-  rim.rotation.x = Math.PI / 2; rim.position.set(0, C.rimY, 0); rim.castShadow = true; g.add(rim);
-  const bracket = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.05, 0.16), orange); bracket.position.set(0, C.rimY - 0.02, C.boardZ + 0.08); g.add(bracket);
+  rim.rotation.x = Math.PI / 2; rim.position.set(0, 0, -(C.boardZ + 0.01)); rim.castShadow = true; rimPivot.add(rim);
+  const bracket = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.05, 0.16), orange); bracket.position.set(0, -0.02, 0.07); rimPivot.add(bracket);
   const bw = 1.83, bh = 1.07, by = 2.9 + bh / 2;
   const glass = new THREE.Mesh(new THREE.BoxGeometry(bw, bh, 0.025), new THREE.MeshPhysicalMaterial({
     color: 0xdfe9ef, roughness: 0.04, metalness: 0, transparent: true, opacity: 0.2, envMapIntensity: 1.4, depthWrite: false }));
@@ -81,6 +84,7 @@ function buildGymHoop(scene) {
   const padUp = new THREE.Mesh(new THREE.BoxGeometry(0.46, 2.0, 0.46), padMat); padUp.position.set(0, 1.9, C.boardZ - 3.05); g.add(padUp);
   g.traverse(o => { if (o.isMesh) o.receiveShadow = true; });
   scene.add(g);
+  return { board: g, rimPivot };
 }
 
 function buildRoom(scene, opts = {}) {
@@ -151,10 +155,10 @@ export function buildGym(renderer, scene, opts = {}) {
   scene.add(floor, reflector);
   const outer = new THREE.Mesh(new THREE.PlaneGeometry(80, 80), new THREE.MeshStandardMaterial({ color: 0x3a2e22, roughness: 0.7 }));
   outer.rotation.x = -Math.PI / 2; outer.position.y = -0.004; scene.add(outer);
-  buildGymHoop(scene);
-  const net = new Net(scene);
+  const hoop = buildGymHoop(scene);
+  const net = opts.net === false ? null : new Net(scene);
   const room = buildRoom(scene, opts);
-  return { floor, reflector, net, lamps: room.lamps };
+  return { floor, reflector, net, hoop, lamps: room.lamps };
 }
 
 // Environment for reflections: a dark box with bright round lamps overhead.

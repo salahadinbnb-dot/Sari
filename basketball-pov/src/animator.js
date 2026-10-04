@@ -110,7 +110,46 @@ export class Track {
       const u = 0.5 - 0.5 * Math.cos(2 * Math.PI * dt / sg.idle.period);
       return Math.min(sg.from + sg.idle.amp * u, clip.dur);
     }
+    if (sg.boost) return Math.min(this.warp(sg, dt), clip.dur);
     return Math.min(sg.from + dt * sg.rate, clip.dur);
+  }
+  // A higher jump from the same take (seg.boost = {from, to, k, pre, hk}: toe-off and touchdown in clip time, the
+  // height scale, the push-off ramp before toe-off, the horizontal scale). A ballistic flight k times as high lasts
+  // sqrt(k) times as long at the same g, so the airborne part of the clip is played sqrt(k) times slower and its
+  // rise over the takeoff-landing line is scaled by k. Just before toe-off the hips are taken a little lower and
+  // brought up faster (the feet stay planted, the knees fold a bit more) so the takeoff speed is sqrt(k) times the
+  // performer's and the flight starts without a kink. Clip time as a function of segment time:
+  // (the flight always lasts sqrt(k) times the performer's at g, whatever the segment's playback rate)
+  warp(sg, dt) {
+    const b = sg.boost, s = Math.sqrt(b.k);
+    const c0 = sg.from + dt * sg.rate;
+    if (c0 <= b.from) return c0;
+    const tFrom = (b.from - sg.from) / sg.rate, air = (b.to - b.from) * s;
+    if (dt <= tFrom + air) return b.from + (dt - tFrom) / s;
+    return b.to + (dt - tFrom - air) * sg.rate;
+  }
+  boostOffset(T, sg, ct) {
+    const b = sg.boost, clip = this.clips[sg.clip], s = Math.sqrt(b.k), pre = b.pre ?? 0.08, hk = b.hk ?? 1;
+    if (ct < b.from - pre) return;
+    if (!b._hip) {
+      const H = (u) => sg.pl.p(hipCenter(sampleCal(clip, u)));
+      b._hip = H; b._h0 = H(b.from); b._h1 = H(b.to);
+    }
+    let dy = 0, dx = 0, dz = 0, legs = true;
+    if (ct < b.from) { // push-off: hips lower then faster up, feet planted (takeoff speed: s times the performer's)
+      const h = b._hip(ct), w = smooth((ct - (b.from - pre)) / pre);
+      dy = (s / sg.rate - 1) * w * (h.y - b._h0.y); legs = false;
+    } else if (ct <= b.to) {
+      const h = b._hip(ct), u = (ct - b.from) / (b.to - b.from), base = b._h0.y + (b._h1.y - b._h0.y) * u;
+      dy = (b.k - 1) * (h.y - base);
+      // hk 1: the same distance (a slower drift), hk = sqrt(k): the same horizontal speed (a longer flight)
+      dx = (hk - 1) * (h.x - b._h0.x); dz = (hk - 1) * (h.z - b._h0.z);
+    } else { dx = (hk - 1) * (b._h1.x - b._h0.x); dz = (hk - 1) * (b._h1.z - b._h0.z); } // landed further on
+    if (!dy && !dx && !dz) return;
+    for (const [k, v] of Object.entries(T.pos)) {
+      if (!legs && /femur|tibia|foot|toes/.test(k)) continue;
+      v.y += dy; v.x += dx; v.z += dz;
+    }
   }
   segTargets(i, t) {
     const sg = this.segs[i];
@@ -119,6 +158,7 @@ export class Track {
     const T = toTargets(sampleCal(clip, ct), sg.pl);
     if (sg.unwind && ct > sg.unwind.from) unwind(T, clip, sg.unwind, ct);
     if (sg.compress && ct > sg.compress.from) this.compress(T, sg, ct);
+    if (sg.boost) this.boostOffset(T, sg, ct);
     T.src = { armLen: clip.armLen, scale: clip.cal.scale, footRest: clip.cal.footRest };
     T.planted = { L: this.planted(sg, t, 'l'), R: this.planted(sg, t, 'r') };
     return T;
