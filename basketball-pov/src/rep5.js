@@ -17,9 +17,9 @@ const V = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
 export const RIM = V(0, 3.05, 0);
 const BOARD_Z = -0.38;
 
-function findPushes(clip, a, b) {
+export function findPushes(clip, a, b, only) {
   const out = [], dt = 1 / 240;
-  for (const s of ['l', 'r']) {
+  for (const s of only ? [only.toLowerCase()] : ['l', 'r']) {
     const h = (ct) => { const f = clamp(ct * clip.fps, 0, clip.n - 1), i = Math.floor(f), j = Math.min(i + 1, clip.n - 1), u = f - i;
       const arr = clip.pos[s + 'hand']; return arr[i * 3 + 1] + (arr[j * 3 + 1] - arr[i * 3 + 1]) * u; };
     const vy = (ct) => (h(ct + dt) - h(ct - dt)) / (2 * dt);
@@ -146,7 +146,7 @@ export class Rep {
         const t1 = Math.min(P0.dribble[1], i + 1 < segs.length ? segs[i + 1].at + (segs[i + 1].inert ? 0 : segs[i + 1].blend * 0.5) : P0.simEnd);
         if (t1 <= t0) continue;
         const c0 = sg.from + (t0 - sg.at) * sg.rate, c1 = sg.from + (t1 - sg.at) * sg.rate;
-        for (const p of findPushes(clip, c0 - 0.4, c1)) {
+        for (const p of findPushes(clip, c0 - 0.4, c1, P0.pushHand)) {
           const s0 = sg.at + (p.c0 - sg.from) / sg.rate, s1 = sg.at + (p.c1 - sg.from) / sg.rate;
           if (s1 >= t0 && s0 < t1 && s1 < P0.gatherAt - 0.05) pushes.push({ hand: p.hand, s0, s1 });
         }
@@ -172,7 +172,8 @@ export class Rep {
     // ankle heights while he's planted at the gather are the floor reference (clips sit at slightly different heights)
     const T = this.T, P0 = this.plan, i0 = Math.round(P0.gatherAt * HZ), win = (a) => Math.min(...a.slice(Math.max(0, i0 - 24), i0 + 48).map(v => v.y));
     const fl = win(T.ankL), fr = win(T.ankR);
-    for (let i = i0; i < T.n; i++) if (T.ankL[i].y > fl + 0.05 && T.ankR[i].y > fr + 0.05) { P0.takeoff = i / HZ; break; }
+    // (from the dip, so a running stride into the gather isn't taken for the jump)
+    for (let i = Math.max(i0, Math.round(((P0.setAt ?? 0) - RISE) * HZ)); i < T.n; i++) if (T.ankL[i].y > fl + 0.05 && T.ankR[i].y > fr + 0.05) { P0.takeoff = i / HZ; break; }
     if (P0.takeoff === undefined || P0.takeoff > P0.release) P0.takeoff = P0.release - 0.25;
     // landing: first moment after the release with a foot back on the floor
     for (let i = Math.round(P0.release * HZ); i < T.n; i++) if (T.ankL[i].y < fl + 0.03 || T.ankR[i].y < fr + 0.03) { P0.land = i / HZ; break; }
@@ -193,6 +194,9 @@ export class Rep {
     const f = this.fwd(t), r = V(-f.z, 0, f.x), hip = this.tab('hip', t);
     return hip.clone().addScaledVector(f, 0.3).addScaledVector(r, -0.16).setY(hip.y + 0.08);
   }
+  // the ball before the first dribble: tucked at the hip (triple threat), or in both hands wherever they take it
+  // (plan.holdHands: a shot fake, a jab with the ball held high)
+  holdAt(t) { return this.plan.holdHands ? this.holdBall(t) : this.hipBall(t); }
   gatherBall(t) { const f = this.fwd(t), hip = this.tab('hip', t); return hip.clone().addScaledVector(f, 0.38).addScaledVector(V(-f.z, 0, f.x), 0.08).setY(hip.y + 0.02); }
   catchPoint() {
     if (!this._catch) { const t1 = this.plan.pass.t1, B = this.holdBall(t1); this._catch = B; }
@@ -238,9 +242,9 @@ export class Rep {
   // the ball before the shot takes over: from the gather into the two-hand hold
   heldBall(t) {
     const P0 = this.plan, P = this.pushes, hold0 = P0.hold ? P0.hold[1] : -1;
-    const from = P0.pass ? this.catchPoint() : (P.length ? this.gatherBall(P0.gatherAt) : this.hipBall(Math.max(hold0, 0)));
+    const from = P0.pass ? this.catchPoint() : (P.length ? this.gatherBall(P0.gatherAt) : this.holdAt(Math.max(hold0, 0)));
     const g = smooth((t - P0.gatherAt) / P0.gatherDur);
-    return (t < P0.gatherAt ? this.hipBall(t) : from.clone()).lerp(this.holdBall(t), g);
+    return (t < P0.gatherAt ? this.holdAt(t) : from.clone()).lerp(this.holdBall(t), g);
   }
   // where the two-hand hold has the ball and both arms at the dip, so the shot starts exactly from there
   dip() {
@@ -345,12 +349,12 @@ export class Rep {
       return { B, state: 'pass', ov };
     }
     const hold0 = P0.hold ? P0.hold[1] : -1;
-    if (P0.hold && t < hold0) { const B = this.hipBall(t); return { B, state: 'held', ov: this.grip(B, t, 0.9) }; }
+    if (P0.hold && t < hold0) { const B = this.holdAt(t); return { B, state: 'held', ov: this.grip(B, t, 0.9) }; }
     if (P.length && t < P0.gatherAt) {
       for (let k = 0; k < P.length; k++) if (t >= P[k].catch && t < P[k].s1) return { B: this.onPalm(P[k].hand, t), state: 'held', ov: {} };
-      if (t < P[0].catch) { // from the hip into the first push
+      if (t < P[0].catch) { // from the hold into the first push
         const u = smooth((t - hold0) / Math.max(P[0].catch - hold0, 0.05));
-        return { B: this.hipBall(t).lerp(this.onPalm(P[0].hand, t), u), state: 'held', ov: u < 1 ? this.grip(this.hipBall(t), t, 0.9 * (1 - u)) : {} };
+        return { B: this.holdAt(t).lerp(this.onPalm(P[0].hand, t), u), state: 'held', ov: u < 1 ? this.grip(this.holdAt(t), t, 0.9 * (1 - u)) : {} };
       }
       const fl = this.flights.find(f => t >= f.r && t < f.c);
       if (fl) return { B: t < fl.tb ? ballistic(fl.B0, fl.F, fl.r, fl.tb, t) : ballistic(fl.F, fl.B1, fl.tb, fl.c, t), state: 'dribble', ov: {} };
@@ -505,16 +509,19 @@ export class Rep {
     const T = this.applyLock('you', P, t), hb = this.handsAndBall(t);
     const d1 = this.tab('d1hip', t).add(V(0, 0.6, 0)), P0 = this.plan;
     const target = P0.pass && t < P0.pass.t1 + 0.1 ? hb.B.clone() : d1;
-    const u = P0.release !== undefined ? smooth((t - (P0.release - 0.6)) / 0.35) : 0;
+    let u = P0.release !== undefined ? smooth((t - (P0.release - 0.6)) / 0.35) : 0;
+    if (P0.lookRim) u = Math.max(u, smooth((t - P0.lookRim[0]) / 0.15) * (1 - smooth((t - P0.lookRim[1]) / 0.15)));
     return { T, opt: { handOverride: hb.ov, look: target.lerp(RIM.clone(), u), lookW: 0.55 + 0.3 * u, curl: 0.3 } };
   }
   // the contest: the near hand goes straight up (verticality), palm to the shooter, a touch toward him - never into
   // the ball; the other arm stays down for balance
   d1Pose(t) {
     const P = this.tracks.d1.at(t); this.contactOffset('d1', P, t);
-    const T = this.applyLock('d1', P, t), b = this.handsAndBall(t).B, opt = { look: b, lookW: 0.55, curl: 0.3 }, c = this.plan.contest;
+    const T = this.applyLock('d1', P, t), b = this.handsAndBall(t).B, opt = { look: b, lookW: 0.55, curl: 0.3 };
+    const cs = this.plan.contest ? [].concat(this.plan.contest) : [];
+    let c = null, w = 0;
+    for (const k of cs) { const wk = smooth((t - k.from) / (k.rise ?? 0.25)) * (1 - smooth((t - k.to) / (k.fall ?? 0.4))); if (wk > w) { w = wk; c = k; } }
     if (c) {
-      const w = smooth((t - c.from) / (c.rise ?? 0.25)) * (1 - smooth((t - c.to) / 0.4));
       if (w > 0) {
         opt.handOverride = {};
         for (const s of c.both ? ['L', 'R'] : [c.side || 'L']) {

@@ -22,7 +22,7 @@ export class Cam5 {
       const A = rep.plan.camAngle ?? 0.6, HC = 1.75, FEET = 14.3 * Math.PI / 180;
       if (!rep._camDir) {
         const tr = rep.plan.camRef ?? rep.plan.release, y0 = rep.frame('you', tr).p, d0 = rep.frame('d1', tr).p, l0 = d0.clone().sub(y0).normalize();
-        let n = V(-l0.z, 0, l0.x); if (n.x < 0) n.negate();
+        let n = V(-l0.z, 0, l0.x); if (n.x < 0) n.negate(); if (rep.plan.camSide) n.multiplyScalar(rep.plan.camSide);
         rep._camDir = n.multiplyScalar(Math.cos(A)).addScaledVector(l0.clone().negate(), Math.sin(A)).normalize();
       }
       const dir = rep._camDir, mid = y.clone().lerp(d, 0.5), across = Math.abs(d.clone().sub(y).dot(V(-dir.z, 0, dir.x)));
