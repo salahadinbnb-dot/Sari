@@ -2,7 +2,8 @@
 
 2K-style gameplay clips and breakdowns, rendered from three.js and driven by real motion capture.
 
-- **v8 (latest): film room, "Make Him Move".** How a shooter who isn't fast or strong beats a quicker defender: head fake, shoulder fake, hesi pull-up, step-back, each into a pull-up over him, with the skeletons in the gym. [`out/make_him_move.mp4`](out/make_him_move.mp4) (1080×1920 portrait, 30 fps, H.264 + AAC)
+- **v9 (latest): film room, "Lockdown".** You're the defender this time: staying down on the fake, mirroring a good ball handler's cross, and helping and recovering as a team, each ending in a contested miss. [`out/lockdown.mp4`](out/lockdown.mp4) (1080×1920 portrait, 30 fps, H.264 + AAC)
+- v8: film room, "Make Him Move". How a shooter who isn't fast or strong beats a quicker defender: head fake, shoulder fake, hesi pull-up, step-back, each into a pull-up over him, with the skeletons in the gym. [`out/make_him_move.mp4`](out/make_him_move.mp4) (1080×1920 portrait, 30 fps, H.264 + AAC)
 - v7: film room, "Get Your Hands On It". Steals against a good dribbler, when he's beaten you, and off the ball, with the skeletons in the gym. [`out/hands_on_it.mp4`](out/hands_on_it.mp4) (1080×1920 portrait, 30 fps, H.264 + AAC)
 - v6: film room, "Get Up". How to approach the rim, a rim touch, then a tomahawk dunk, with the skeleton in the gym. [`out/get_up.mp4`](out/get_up.mp4) (1080×1920 portrait, 30 fps, H.264 + AAC)
 - v5: film room, "Read his weight". When to shoot, when not to, and how to finish through contact, with the skeletons in the gym. [`out/read_his_weight.mp4`](out/read_his_weight.mp4) (1080×1920 portrait, 30 fps, H.264 + AAC)
@@ -25,6 +26,24 @@ It writes three files:
 - `clip_overlay.mp4`: the footage with the tracked skeleton drawn on it.
 - `clip_pose.mp4`: the skeleton alone on black, the pose-reference format that AI video tools take.
 - `clip.json`: per-frame 2D image landmarks with visibility, plus 3D world landmarks in metres around the hips.
+
+## v9: what it shows
+
+The other side of v8, in three reps. The floor ring and arrow are under you now, green while you're balanced and in
+front, red once you're beat; the strip marks the contest and how far your hand was from the shooter.
+
+| Rep | What it shows |
+|---|---|
+| 1 · Stay down | The same head fake that beat the slow guy's man. You close out short and stop, hands up and feet down, so the fake gets nothing. He breaks; you slide with him, beat him to the spot and contest the pull-up at 3.5 ft. Miss. |
+| 2 · Mirror the cross | He attacks with a cross. You hold a cushion, slide with the cross instead of lunging at it, chest in front, and he has to rise with you right there: 2.8 ft. Miss. |
+| 3 · Help and recover | A driver beats your teammate. You sprint over from the gap and stop the ball; he jump-stops and kicks it out to your man. You go on the pass, short steps the last stride, hand high: 2.4 ft. Miss. |
+
+## How v9 is made
+
+- **Engine:** the v5/v8 page and rep engine, plus a miss off the front of the rim (reflected off the ring, then gravity, floor bounces and a roll), a rep that hands its ball off with a pass (`passOut`), and a fixed high team camera. The floor meter's colours are inverted, since its player is you.
+- **Team rep:** two reps share your track. The first has the driver's ball (78_32's drive, 124_05's jump stop) until his pass; the second takes it from his hands to your man (124_05's catch and shoot, its turn trimmed to the pass angle). Your beaten teammate (78_25) and the driver are extra players.
+- **Motion:** 78_22 and 124_05 for the head fake; 06_13 and 124_05 for the cross; 78_25, 78_26 and 78_30 for your closeouts, help and slides, each slide sized to the ground you need to cover.
+- **Files:** `src/play9.js`, `src/hud9.js`, `src/hud9.css`, `src/timeline9.js`, `src/main9.js`.
 
 ## v8: what it shows
 
@@ -279,6 +298,8 @@ A right-wing isolation with the clock running out and your team down two.
 npm install
 pip install pillow numpy scipy imageio-ffmpeg trimesh networkx mediapipe
 npm run assets      # Rocketbox models + uniforms, CMU mocap clips
+npm run preview:v9  # quick 540x960 check of v9
+npm run render:v9   # final 1080x1920 v9 with audio -> out/lockdown.mp4
 npm run preview:v8  # quick 540x960 check of v8
 npm run render:v8   # final 1080x1920 v8 with audio -> out/make_him_move.mp4
 npm run preview:v7  # quick 540x960 check of v7
