@@ -1,6 +1,6 @@
 // Render the timeline to H.264 MP4 using N parallel headless browsers.
 // usage: node tools/render.mjs --out out/file.mp4 [--page src/index2.html] [--q half] [--workers 3] [--from 0] [--to N] [--size 1920x1080] [--step 1]
-//        [--viewport 1080x1920] (page size; defaults to 1920x1080) [--crf 17]
+//        [--viewport 1080x1920] (page size; defaults to 1920x1080) [--crf 17] [--tmp frames] (parts dir, for running two at once)
 import { startServer, openPage, ROOT } from './harness.mjs';
 import { spawn, execFileSync } from 'node:child_process';
 import fs from 'node:fs';
@@ -15,7 +15,7 @@ const size = (args.size || '1920x1080').split('x').map(Number);
 const step = +(args.step || 1);
 const [vw, vh] = (args.viewport || '1920x1080').split('x').map(Number);
 const FF = execFileSync('python3', ['-c', 'import imageio_ffmpeg;print(imageio_ffmpeg.get_ffmpeg_exe())']).toString().trim();
-const tmpDir = path.join(ROOT, 'frames'); fs.mkdirSync(tmpDir, { recursive: true });
+const tmpDir = path.resolve(ROOT, args.tmp || 'frames'); fs.mkdirSync(tmpDir, { recursive: true });
 
 const server = await startServer();
 // find frame count
