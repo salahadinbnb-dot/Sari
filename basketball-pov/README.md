@@ -54,7 +54,7 @@ The numbers come from:
   - Forward speed at the first contact of the plant predicted jump height best: r = 0.92 without the ball, 0.91 with it (mean 3.8 m/s).
   - A plant angle further ahead went with higher jumps (r = -0.74; mean 59°).
 - **The arms:** Lees, Vanrenterghem & De Clercq 2004 (J Biomech). An arm swing added 0.086 m (3.4 in) to a maximal standing jump.
-- **Reach:** NBA Draft Combine, 2000-2026. Standing reach is about 1.33 × barefoot height, so a 6'6" player reaches about 8'8" and needs 16 in to touch a 10-ft rim.
+- **Reach:** NBA Draft Combine, 2000-2026. Standing reach is about 1.33 × barefoot height, so a 6'5" player (the skeleton) reaches about 8'7" and needs 17 in to touch a 10-ft rim.
 - **Dunkers:** Tong & Wang 2024 (PLoS One). NBA dunk-contest finalists' combine max vertical was 102.4 cm (40.3 in).
 
 ## How v6 is made
@@ -63,7 +63,7 @@ The numbers come from:
   - **Jump boost** (`boost` in `src/animator.js`).
     - A flight k times as high lasts √k times as long at the same g. So the airborne part of the take plays √k times slower, and its rise over the takeoff-to-landing line is scaled by k.
     - Just before toe-off the hips are taken a little lower and brought up faster, with the feet still planted, so the takeoff speed is √k times the performer's and the flight starts without a kink.
-    - Rep 1 uses k = 1.35; rep 2 uses k = 2.1 and plays its run-up 1.18× faster.
+    - Rep 1 uses k = 1.2; rep 2 uses k = 2.1 and plays its run-up 1.18× faster.
   - The air turn of the lay-up is taken out so he stays square to the rim.
 - **Placement:** `src/play6.js` places the approach so that at the top of the jump the rim is a set distance in front of his right shoulder, facing it; the jump's own drift and turn come from the take. He comes in from the left wing at about 45°.
 - **Arms, ball and rim:** `src/rep6.js`.
@@ -119,7 +119,10 @@ The numbers come from:
   - The defender's spot and facing were fitted so the retreat goes straight back and the slides run across the shooter's front.
   - `node tools/geom5.mjs <rep>` prints spacing, body clearance (capsules; negative means the bodies overlap) and the defender's balance.
 - **Hands, ball and contact:** `src/rep5.js`.
-  - The jump shot's arms are procedural on top of the performer's legs and body. The ball sits on the shooting hand at a set point above the forehead, the guide hand rides its side and comes off just before the release, the arm extends about 62° toward the rim, the wrist snaps, and the follow-through is held until he lands.
+  - The jump shot's arms are procedural on top of the performer's legs and body. From the dip at his waist the ball comes straight up the front of him into a set point above his right eye. The shooting hand turns under the ball on the way.
+  - At the set the upper arm is just below level and turned in toward his chest, and the forearm is straight up. The set is built off his chest (the take has his shoulders turned about 25° off the rim line), so the elbow stays under the ball instead of flaring out.
+  - The elbow's IK pole is the point under the wrist the whole way, so it rides under the ball on the rise and points at the rim on the release. The guide hand rides the ball's left side, its elbow a little out, and comes off just before the release.
+  - The arm extends about 62° toward the rim, the wrist snaps, and the follow-through is held until he lands.
   - The defender's contest hands go straight up (verticality) and are kept off the ball.
   - The pass and the catch, the dribbles (found in the performer's hands) and the layup off the glass are handled here too.
   - The contact is a collision: whatever part of the help defender's slide would carry him through the finisher is taken out along the line of contact, plus a shove that rocks him back.

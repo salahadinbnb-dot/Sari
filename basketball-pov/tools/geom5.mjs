@@ -7,7 +7,7 @@ import { CLIPS5, REPS, buildRep } from '../src/play5.js';
 setClipSource(async (n) => JSON.parse(fs.readFileSync(new URL(`../assets/mocap/json/${n}.json`, import.meta.url))));
 const clips = {}; for (const c of CLIPS5) clips[c] = await loadClip(c);
 const name = process.argv[2] || 'heels', step = +(process.argv[3] || 0.1), t0 = +(process.argv[4] || 0), t1 = +(process.argv[5] || REPS[name].simEnd);
-const { you, d1 } = buildRep(name, clips, { you: 0.8617, d1: 0.8664 });
+const { you, d1 } = buildRep(name, clips, { you: 0.8617 * 2.125 / 1.96, d1: 0.8664 * 2.135 / 1.97 });
 const W0 = Math.sqrt(9.81 / 0.95);
 const com = (T) => { const p = T.pos, h = p.lhipjoint.clone().add(p.rhipjoint).multiplyScalar(0.5);
   return h.multiplyScalar(0.45).addScaledVector(p.thorax, 0.3).addScaledVector(p.head, 0.08).addScaledVector(p.lfemur, 0.085).addScaledVector(p.rfemur, 0.085); };

@@ -19,7 +19,8 @@ import { smooth } from './motion.js';
 const W = 1080, H = 1920;
 const q = new URLSearchParams(location.search);
 const SUB = q.has('sub') ? +q.get('sub') : 2;
-const SPECS = { you: { model: '04', tex: 'you', height: 1.96 }, d1: { model: '03', tex: 'd1', height: 1.97 } };
+// (built taller than they read: in their relaxed stance the skeletons stand about 6'5" to the top of the skull)
+const SPECS = { you: { model: '04', tex: 'you', height: 2.125 }, d1: { model: '03', tex: 'd1', height: 2.135 } };
 
 async function init() {
   const canvas = document.getElementById('gl');

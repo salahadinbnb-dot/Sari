@@ -134,7 +134,7 @@ export class Hud6 {
       this.cardKind = k;
       this.card.innerHTML = k === 'intro'
         ? `<div class="k">FILM ROOM</div><div class="h">GET UP</div><div class="s">How to actually dunk</div>
-           <div class="stat"><div class="n">10'0"</div><div class="l">the rim</div><div class="n">1.33×</div><div class="l">your standing reach vs your height<br>(NBA Draft Combine, 1,811 players)</div><div class="n">16 in</div><div class="l">to touch it at 6'6" (8'8" reach)</div></div>
+           <div class="stat"><div class="n">10'0"</div><div class="l">the rim</div><div class="n">1.33×</div><div class="l">your standing reach vs your height<br>(NBA Draft Combine, 1,811 players)</div><div class="n">17 in</div><div class="l">to touch it at 6'5" (8'7" reach)</div></div>
            <div class="list"><div>1 · The approach → touch the rim</div><div>2 · Dunk it</div></div>`
         : `<div class="big">Speed <em>into</em><br>the plant.</div><div class="big sm">Feet ahead of your hips.<br>Arms back, then up.<br>Ball up <em>with</em> the jump.</div>
            <div class="src">Two-foot running jumps: Liu & Zaferiou 2025 (Front Sports Act Living), 21 players · Arm swing: Lees et al. 2004 (J Biomech) ·<br>Reach: NBA Draft Combine 2000-26 · Dunk contest: Tong & Wang 2024 (PLoS One) · Vertical from hang time: h = g·t²/8</div>`;

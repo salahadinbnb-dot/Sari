@@ -51,7 +51,7 @@ export function placeForRim(clips, leg, o) {
 
 export const REPS6 = {
   // 1 - the approach, and a rim touch: no ball, get a hand on it
-  touch: { simEnd: 4.2, k: 1.35, plan: { kind: 'touch' },
+  touch: { simEnd: 4.2, k: 1.2, plan: { kind: 'touch' },
     build(clips, legs) { return { you: placeForRim(clips, legs.you, { from: 1.45, k: this.k, reach: 0.4, faceRef: Math.PI + 0.35, dt: -0.01, unwind: 1 }) }; } },
   // 2 - the dunk: same approach all-out, ball cocked back behind the head at the top, thrown down
   dunk: { simEnd: 4.4, k: 2.1, plan: { kind: 'dunk' },

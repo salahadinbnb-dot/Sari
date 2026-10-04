@@ -8,7 +8,7 @@ import { loadTemplates, makePlayerMesh, Rig } from './player.js';
 import { loadClip } from './mocap.js';
 import { CLIPS6, REPS6 } from './play6.js';
 import { Rep6, RIM } from './rep6.js';
-import { buildTimeMap, FPS, SEQ } from './timeline6.js';
+import { buildTimeMap, resolveSeq, FPS, SEQ } from './timeline6.js';
 import { makeBall } from './ball.js';
 import { Cam6 } from './camera6.js';
 import { loadBones, makeBoneSkeleton, makeShoes } from './boneskel.js';
@@ -20,7 +20,9 @@ import { smooth } from './motion.js';
 const W = 1080, H = 1920;
 const q = new URLSearchParams(location.search);
 const SUB = q.has('sub') ? +q.get('sub') : 2;
-const SPEC = { model: '04', tex: 'you', height: 1.96 };
+// (model height: the skeleton's relaxed standing pose loses height to the stance and the model's proportions, so it
+// is built taller than he reads - this way he stands about 6'5" to the top of his skull)
+const SPEC = { model: '04', tex: 'you', height: 2.125 };
 
 async function init() {
   const canvas = document.getElementById('gl');
@@ -70,6 +72,7 @@ async function init() {
   const marks = new Marks6(scene, reps);
   const cam = new Cam6(reps);
   const camera = new THREE.PerspectiveCamera(50, W / H, 0.05, 120);
+  resolveSeq(reps);
   const frames = buildTimeMap(FPS);
   const hud = new Hud6(document.getElementById('hud'), reps, frames, FPS);
   const pw = Math.round(W * renderer.getPixelRatio()), ph = Math.round(H * renderer.getPixelRatio());

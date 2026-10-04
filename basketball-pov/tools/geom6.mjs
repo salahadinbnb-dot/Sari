@@ -6,7 +6,7 @@ import { CLIPS6, REPS6, RIM } from '../src/play6.js';
 setClipSource(async (n) => JSON.parse(fs.readFileSync(new URL(`../assets/mocap/json/${n}.json`, import.meta.url))));
 const clips = {}; for (const c of CLIPS6) clips[c] = await loadClip(c);
 const name = process.argv[2] || 'touch', step = +(process.argv[3] || 0.1), t0 = +(process.argv[4] || 0), t1 = +(process.argv[5] || REPS6[name].simEnd);
-const { you } = REPS6[name].build(clips, { you: 0.8617 });
+const { you } = REPS6[name].build(clips, { you: 0.8617 * 2.125 / 1.96 });
 let apex = { y: -1 };
 for (let t = 0; t <= REPS6[name].simEnd; t += 1 / 240) { const h = you.hip(t); if (h.y > apex.y) apex = { y: h.y, t }; }
 const f = (v) => `(${v.x.toFixed(2)},${v.y.toFixed(2)},${v.z.toFixed(2)})`;
