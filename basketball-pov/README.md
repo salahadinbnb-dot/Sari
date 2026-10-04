@@ -2,7 +2,8 @@
 
 2K-style gameplay clips and breakdowns, rendered from three.js and driven by real motion capture.
 
-- **v5 (latest): film room, "Read his weight".** When to shoot, when not to, and how to finish through contact, with the skeletons in the gym. [`out/read_his_weight.mp4`](out/read_his_weight.mp4) (1080×1920 portrait, 30 fps, H.264 + AAC)
+- **v6 (latest): film room, "Get Up".** How to approach the rim, a rim touch, then a tomahawk dunk, with the skeleton in the gym. [`out/get_up.mp4`](out/get_up.mp4) (1080×1920 portrait, 30 fps, H.264 + AAC)
+- v5: film room, "Read his weight". When to shoot, when not to, and how to finish through contact, with the skeletons in the gym. [`out/read_his_weight.mp4`](out/read_his_weight.mp4) (1080×1920 portrait, 30 fps, H.264 + AAC)
 - v4: skeletons hooping in a practice gym, shot like a phone clip. [`out/skeleton_gym.mp4`](out/skeleton_gym.mp4) (1080×1920 portrait, 30 fps, H.264 + AAC)
 - v3: tweener, cross, cross, step-back three, from the side. [`out/tweener.mp4`](out/tweener.mp4) (1920×1080, 60 fps, H.264 + AAC)
   - Skeleton version: [`out/tweener_skeleton.mp4`](out/tweener_skeleton.mp4). It's the same play and motion, with the players drawn as their skeletons instead of the 3D models (`src/index3.html?skel`).
@@ -22,6 +23,64 @@ It writes three files:
 - `clip_overlay.mp4`: the footage with the tracked skeleton drawn on it.
 - `clip_pose.mp4`: the skeleton alone on black, the pose-reference format that AI video tools take.
 - `clip.json`: per-frame 2D image landmarks with visibility, plus 3D world landmarks in metres around the hips.
+
+## v6: what it shows
+
+A film-room breakdown of the approach and the dunk, in two reps. Each plays near full speed, then freezes and slows
+down on the parts that matter, and measures them.
+
+| Rep | What it shows |
+|---|---|
+| 1 · Approach + rim touch | A walk-in that builds to a run (fastest steps last), a big step that drops the hips, a two-foot plant with the feet landing ahead of the hips, the arms swung back and punched up, and one hand on the front of the rim. |
+| 2 · Dunk it | The same approach faster, with the ball in one hand. Both hands take it on the big step, it goes up with the jump, gets cocked back behind his head at the top, and is thrown down. He hangs on the rim for a moment. Then a replay from his left. |
+
+On screen:
+
+- **The numbers** along the bottom:
+  - speed (live, then the speed into the plant and the top speed);
+  - how far the hips drop on the big step and the plant;
+  - the plant angle (hips to heel against the floor at the first foot's touchdown);
+  - hang time, then the vertical it means (h = g·t²/8).
+- **Reach gauge** on the right edge, from 8 ft to 12 ft with the rim at 10 ft. It marks the highest point of his fingertips, or of the ball.
+- **On the picture:**
+  - a footprint where each step lands, with its speed;
+  - the hip drop bracket;
+  - the plant angle drawn from his hips to his heel.
+- **The hoop reacts.** The rim sits on a breakaway hinge: it shivers when he slaps it, and on the dunk it bends under his hand, then springs back and rings. The stanchion rocks a little, the net is pushed open by the ball and snaps back, and the camera jolts on the slam.
+
+The numbers come from:
+
+- **The approach:** Liu & Zaferiou 2025 (Front Sports Act Living). 21 basketball players did two-foot running jumps, tapping the hoop or dunking.
+  - Forward speed at the first contact of the plant predicted jump height best: r = 0.92 without the ball, 0.91 with it (mean 3.8 m/s).
+  - A plant angle further ahead went with higher jumps (r = -0.74; mean 59°).
+- **The arms:** Lees, Vanrenterghem & De Clercq 2004 (J Biomech). An arm swing added 0.086 m (3.4 in) to a maximal standing jump.
+- **Reach:** NBA Draft Combine, 2000-2026. Standing reach is about 1.33 × barefoot height, so a 6'6" player reaches about 8'8" and needs 16 in to touch a 10-ft rim.
+- **Dunkers:** Tong & Wang 2024 (PLoS One). NBA dunk-contest finalists' combine max vertical was 102.4 cm (40.3 in).
+
+## How v6 is made
+
+- **Motion:** two real takes (CMU mocap), cut together where the poses match (`tools/transit.py`, cost 0.87): a walk into a run (127_04) and the lay-up approach from 124_06, a long bound, a quick plant and a two-foot takeoff. The performer's own jump is 0.65 s in the air (about 20 in).
+  - **Jump boost** (`boost` in `src/animator.js`).
+    - A flight k times as high lasts √k times as long at the same g. So the airborne part of the take plays √k times slower, and its rise over the takeoff-to-landing line is scaled by k.
+    - Just before toe-off the hips are taken a little lower and brought up faster, with the feet still planted, so the takeoff speed is √k times the performer's and the flight starts without a kink.
+    - Rep 1 uses k = 1.35; rep 2 uses k = 2.1 and plays its run-up 1.18× faster.
+  - The air turn of the lay-up is taken out so he stays square to the rim.
+- **Placement:** `src/play6.js` places the approach so that at the top of the jump the rim is a set distance in front of his right shoulder, facing it; the jump's own drift and turn come from the take. He comes in from the left wing at about 45°.
+- **Arms, ball and rim:** `src/rep6.js`.
+  - Rep 1: the arms swing back on the plant and up through the takeoff (keyed to the take's footwork), and the right hand goes to the front of the rim.
+  - Rep 2:
+    - The ball rides the right palm by his hip, goes into both hands on the big step, and follows the performer's two-hand gather and rise.
+    - Then it goes on to a keyed path: overhead, cocked behind the head, over the rim, and down. After that the ball flies on its own: through the net, which slows it, and onto the floor.
+    - The hand grabs the front of the rim, which is bent down by it, until his arm runs out of reach.
+  - The approach numbers are measured from the motion: footfalls from the feet, speed from the hips, the plant angle at the heel strike.
+- **Net:** `src/net6.js`. It hangs from the flexing rim, sways, and can't pass through the ball.
+- **Overlays and edit:**
+  - `src/hud6.js` and `src/hud6.css`: numbers, reach gauge, drawings, captions and cards.
+  - `src/marks6.js`: footprints.
+  - `src/camera6.js`: a side view of the run-up, low behind the baseline for the rise, and the replay.
+  - `src/timeline6.js`: the edit.
+- **Sound:** `tools/audio_dunk.py`. Steps on the maple, the plant's squeak, a whoosh off the floor, fingers on the rim, and the slam (rim clang, hinge spring, stanchion thud, glass rattle, net).
+- `node tools/geom6.mjs <rep>` prints the hip path, speed, facing and the apex.
 
 ## v5: what it shows
 
@@ -153,6 +212,8 @@ A right-wing isolation with the clock running out and your team down two.
 npm install
 pip install pillow numpy scipy imageio-ffmpeg trimesh networkx mediapipe
 npm run assets      # Rocketbox models + uniforms, CMU mocap clips
+npm run preview:v6  # quick 540x960 check of v6
+npm run render:v6   # final 1080x1920 v6 with audio -> out/get_up.mp4
 npm run preview:v5  # quick 540x960 check of v5
 npm run render:v5   # final 1080x1920 v5 with audio -> out/read_his_weight.mp4
 npm run preview:v4  # quick 540x960 check of v4

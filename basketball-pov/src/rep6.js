@@ -156,7 +156,7 @@ export class Rep6 {
   touchPoint() {
     if (!this._tp) {
       const t = this.touch.t, S = this.tab('shR', t), to = V(RIM.x - S.x, 0, RIM.z - S.z).normalize(), r = V(-to.z, 0, to.x);
-      this._tp = RIM.clone().addScaledVector(to, -RIM_R).addScaledVector(r, 0.06).add(V(0, 0.015, 0));
+      this._tp = RIM.clone().addScaledVector(to, -RIM_R + 0.03).addScaledVector(r, 0.06).add(V(0, 0.04, 0));
       this._tpTo = to;
     }
     return this._tp;
@@ -224,7 +224,7 @@ export class Rep6 {
     const d = this.d, k = this.k, S = this.tab('shR', d.cock), f0 = V(RIM.x - S.x, 0, RIM.z - S.z).normalize(), r0 = V(-f0.z, 0, f0.x);
     const at = (t, a, b, c) => this.tab('shR', t).addScaledVector(UP, a).addScaledVector(f0, b).addScaledVector(r0, c);
     const B0 = this.hold(d.take);
-    const keys = [[d.take, B0], [d.over, at(d.over, 0.66, 0.16, -0.06)], [d.cock, at(d.cock, 0.5, -0.3, 0.04)], [d.slam, RIM.clone().add(V(0, 0.2, 0)).addScaledVector(f0, -0.05)], [d.rel, RIM.clone().add(V(0, 0.07, 0))]];
+    const keys = [[d.take, B0], [d.over, at(d.over, 0.7, 0.14, -0.06)], [d.cock, at(d.cock, 0.64, -0.27, 0.04)], [d.slam, RIM.clone().add(V(0, 0.22, 0)).addScaledVector(f0, -0.05)], [d.rel, RIM.clone().add(V(0, 0.07, 0))]];
     // hand orientation keys: fingers (dir) and palm normal, in the same frame
     const D = (a, b, c) => f0.clone().multiplyScalar(a).addScaledVector(UP, b).addScaledVector(r0, c).normalize();
     const ori = [[d.take, D(0.3, 0.9, 0.2), D(-0.2, 0.1, -1)], [d.over, D(0.25, 1, 0), D(0.9, -0.1, 0)], [d.cock, D(-0.55, 0.8, 0), D(0.82, 0.55, 0)], [d.slam, D(0.85, 0.5, 0), D(0.5, -0.85, 0)], [d.rel, D(0.6, -0.8, 0), D(-0.8, -0.6, 0)]];
@@ -287,14 +287,14 @@ export class Rep6 {
   // then it springs back and rings (damped, ~6.5 Hz)
   rimAngle(t) {
     if (this.plan.kind === 'touch') { const tau = t - this.touch.t; return tau > 0 ? 0.014 * Math.exp(-5 * tau) * Math.sin(2 * Math.PI * 9 * tau) : 0; }
-    const d = this.d, hold = 0.12;
+    const d = this.d, hold = 0.2;
     if (t < d.grab) { const tau = t - d.rel; return tau > 0 ? 0.03 * Math.sin(Math.PI * clamp(tau / (d.grab - d.rel), 0, 1) * 0.5) : 0; }
-    if (t < d.let) return 0.03 + (hold - 0.03) * smooth((t - d.grab) / 0.07);
+    if (t < d.let) return 0.03 + (hold - 0.03) * smooth((t - d.grab) / 0.08);
     const tau = t - d.let, w = 2 * Math.PI * 6.5, z = 0.12;
     return hold * Math.exp(-z * w * tau) * Math.cos(w * Math.sqrt(1 - z * z) * tau);
   }
   boardShake(t) { // the stanchion arm rocks a little (rad, about x at the base)
-    const t0 = this.plan.kind === 'touch' ? this.touch.t : this.d.grab, tau = t - t0, A = this.plan.kind === 'touch' ? 0.0004 : 0.0028;
+    const t0 = this.plan.kind === 'touch' ? this.touch.t : this.d.grab, tau = t - t0, A = this.plan.kind === 'touch' ? 0.0006 : 0.006;
     return tau > 0 ? A * Math.exp(-2.2 * tau) * Math.sin(2 * Math.PI * 2.6 * tau) : 0;
   }
   netState(t) {

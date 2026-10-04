@@ -30,7 +30,8 @@ export class Hud6 {
     for (const [name, rep] of Object.entries(reps)) {
       const M = rep.M;
       this.vals[name] = { top: M.vmax.toFixed(1), topmph: (M.vmax * MPH).toFixed(1), plantv: M.vPlant.toFixed(1), drop: (M.drop * IN).toFixed(1), angle: Math.round(M.angle), vert: Math.round(M.vert * IN), hang: M.hang.toFixed(2),
-        clear: rep.plan.kind === 'dunk' ? Math.round((rep.ballAt(rep.d.cock).y - 0.12 - RIM.y) * IN) : 0 };
+        clear: rep.plan.kind === 'dunk' ? Math.round((rep.ballAt(rep.d.cock).y - 0.12 - RIM.y) * IN) : 0,
+        hand: rep.plan.kind === 'dunk' ? Math.round((rep.ballAt(rep.d.cock).y + 0.12 - RIM.y) * IN) : 0 };
     }
   }
   fill(s) { return s.replace(/\{(\w+)\.(\w+)\}/g, (_, r, k) => this.vals[r][k]); }
@@ -51,9 +52,9 @@ export class Hud6 {
   update(fr, st, cam, reach = 0) {
     const rep = this.reps[fr.rep], k = rep.k, M = rep.M, S = this.seg[fr.seg], e = fr.vt - S.v0, r = S.v1 - fr.vt;
     this.setRep(fr.rep);
-    this.flash = rep.plan.kind === 'dunk' && !fr.freeze && fr.cam !== 'side' ? 0.5 * Math.exp(-Math.max(0, st - rep.d.rel) / 0.05) * (st >= rep.d.rel ? 1 : 0) : 0;
+    this.flash = rep.plan.kind === 'dunk' && !fr.freeze && fr.cam !== 'side' ? (fr.replay ? 0.18 : 0.4) * Math.exp(-Math.max(0, st - rep.d.rel) / 0.05) * (st >= rep.d.rel ? 1 : 0) : 0;
     if (fr.card) return this.cardUpdate(fr, e, S);
-    this.card.style.opacity = '0';
+    this.card.style.opacity = '0'; this.svg.style.opacity = '1';
     const u = smooth((fr.vt - this.repStart[fr.rep]) / 0.35);
     this.top.style.opacity = String(u); this.top.style.transform = `translateY(${(1 - u) * -30}px)`;
     const ms = this.mode.querySelector('span');
@@ -81,8 +82,7 @@ export class Hud6 {
     // reach gauge: from just before takeoff to after landing
     const ga = smooth((st - (k.off - 0.05)) / 0.15) * (1 - smooth((st - (k.land + 0.4)) / 0.3));
     this.gauge.style.opacity = String(ga);
-    if (st < k.off - 0.3) this.best = 0;
-    this.best = Math.max(this.best || 0, reach);
+    this.best = rep.reachAt(st);
     const mk = this.gauge.querySelector('.mark'), yy = this.gy(clamp(this.best, G0, G1));
     mk.style.opacity = String(smooth((this.best - (G0 - 0.05)) / 0.08));
     mk.style.top = yy + 'px'; mk.querySelector('span').textContent = (rep.plan.kind === 'dunk' ? 'BALL ' : 'REACH ') + ftin(this.best);
@@ -92,7 +92,7 @@ export class Hud6 {
     this.drawOverlays(fr, st, cam);
   }
   drawOverlays(fr, st, cam) {
-    const rep = this.reps[fr.rep], k = rep.k, M = rep.M; let h = '';
+    const rep = this.reps[fr.rep], k = rep.k, M = rep.M, show = fr.show || ''; let h = '';
     if (cam && fr.cam === 'side') {
       // step speeds under the footprints
       const fade = 1 - smooth((st - (k.off + 0.15)) / 0.3);
@@ -100,11 +100,11 @@ export class Hud6 {
         if (f.t > k.off || st < f.t || fade <= 0) continue;
         const p = this.proj(f.p, cam); if (!p.ok) continue;
         const a = smooth((st - f.t) / 0.08) * fade, cls = f.plant ? 'plant' : f.big ? 'big' : '';
-        const txt = f.plant ? 'PLANT' : f.big ? 'BIG STEP' : `${f.speed.toFixed(1)}`;
-        h += `<g opacity="${a.toFixed(3)}" class="${cls}"><text x="${p.x.toFixed(1)}" y="${(p.y + 52).toFixed(1)}" class="stp">${txt}</text></g>`;
+        const txt = f.plant ? 'PLANT' : f.big ? 'BIG STEP' : `${f.speed.toFixed(1)} m/s`;
+        h += `<g opacity="${a.toFixed(3)}" class="${cls}"><text x="${p.x.toFixed(1)}" y="${(p.y + (f.plant ? 104 : 52)).toFixed(1)}" class="stp">${txt}</text></g>`;
       }
       // the hip drop: his running hip height vs now, on his hip (from the big step until takeoff)
-      const hd = smooth((st - (k.bound - 0.12)) / 0.1) * (1 - smooth((st - (k.off - 0.02)) / 0.1));
+      const hd = show.includes('hips') ? smooth((st - (M.tPlant0 - 0.02)) / 0.06) * (1 - smooth((st - (k.off - 0.02)) / 0.1)) : 0;
       if (hd > 0.01) {
         const hip = rep.tab('hip', Math.min(st, M.tLow)), f = rep.frame(st).f, run = hip.clone(); run.y = M.run;
         const a0 = this.proj(run.clone().addScaledVector(f, -0.35), cam), a1 = this.proj(run.clone().addScaledVector(f, 0.35), cam);
@@ -114,7 +114,7 @@ export class Hud6 {
           <line x1="${b1.x + 14}" y1="${a1.y}" x2="${b1.x + 14}" y2="${b1.y}" class="brk"/><text x="${b1.x + 26}" y="${(a1.y + b1.y) / 2 + 12}" class="lbl">↓ ${dropNow.toFixed(1)} in</text></g>`;
       }
       // the plant angle: hips to the front heel at the first contact of the plant, against the floor
-      const pa = smooth((st - M.tPlant0) / 0.06) * (1 - smooth((st - (k.off + 0.05)) / 0.12));
+      const pa = !show.includes('angle') ? 0 : fr.freeze ? smooth((fr.vt - this.seg[fr.seg].v0) / 0.3) : smooth((st - (M.tPlant0 - 0.04)) / 0.04) * (1 - smooth((st - (M.tPlant0 + 0.08)) / 0.06));
       if (pa > 0.01) {
         const t0 = M.tPlant0, hip = rep.tab('hip', t0).add(new THREE.Vector3(0, 0.06, 0)), heel = rep.M.heel, f = rep.frame(t0).f;
         const P = this.proj(hip, cam), Hh = this.proj(heel, cam), Fl = this.proj(heel.clone().addScaledVector(f, -0.7), cam);

@@ -35,9 +35,9 @@ html, body { margin: 0; padding: 0; background: #000; overflow: hidden; }
 /* overlays drawn on the picture */
 .ov { inset: 0; }
 .ov svg { position: absolute; inset: 0; overflow: visible; }
-.ov .stp { font-family: 'BC'; font-weight: 800; font-size: 34px; fill: #fff; text-anchor: middle; paint-order: stroke; stroke: rgba(0,0,0,0.85); stroke-width: 7px; letter-spacing: 1px; }
-.ov .big .stp { fill: var(--amber); font-size: 36px; }
-.ov .plant .stp { fill: var(--green); font-size: 38px; }
+.ov .stp { font-family: 'BC'; font-weight: 800; font-size: 44px; fill: #fff; text-anchor: middle; paint-order: stroke; stroke: rgba(0,0,0,0.85); stroke-width: 7px; letter-spacing: 1px; }
+.ov .big .stp { fill: var(--amber); font-size: 46px; }
+.ov .plant .stp { fill: var(--green); font-size: 48px; }
 .ov .dash { stroke: rgba(255,255,255,0.85); stroke-width: 4; stroke-dasharray: 12 9; }
 .ov .hipl { stroke: var(--amber); stroke-width: 6; stroke-linecap: round; }
 .ov .brk { stroke: var(--amber); stroke-width: 4; }

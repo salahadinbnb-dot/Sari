@@ -27,28 +27,31 @@ export class Cam6 {
       // rim; tilts up as he goes up
       const toff = rep.tab('hip', k.off), u = smooth((t - (k.off - 0.6)) / 0.7);
       const c = h.clone().lerp(toff.clone().addScaledVector(L.f, 0.25), u);
-      const dist = 5.6 + 1.6 * u;
-      const pos = c.clone().addScaledVector(L.n, dist).addScaledVector(L.f, -0.4 + 0.3 * u); pos.y = 1.25 + 0.35 * u;
-      const look = c.clone().addScaledVector(L.f, 0.35 * (1 - u)); look.y = 1.05 + 1.0 * u;
+      const dist = 5.6 + 0.7 * u;
+      const pos = c.clone().addScaledVector(L.n, dist).addScaledVector(L.f, -0.4 + 0.3 * u); pos.y = 1.25 + 0.2 * u;
+      const look = c.clone().addScaledVector(L.f, 0.35 * (1 - u)); look.y = 1.05 + 0.45 * u;
       return { pos, look, fov: 50 + 4 * u };
     }
     if (mode === 'rim') {
       // low, behind the baseline on the right of the hoop, looking up across the front of the rim
-      const pos = V(2.05, 0.85, -1.55);
+      const pos = V(2.45, 0.95, -2.05);
       const ap = rep.tab('hip', k.apex), look = ap.clone().lerp(RIM, 0.55); look.y = 2.35 + 0.25 * smooth((t - k.off) / 0.4);
       return { pos, look, fov: 64 };
     }
-    // replay: from his left, a little in front, up at rim height
-    const pos = RIM.clone().addScaledVector(L.n, -3.3).addScaledVector(L.f, -1.6); pos.y = 2.75;
-    const look = rep.tab('hip', Math.max(t, k.off - 0.2)).lerp(RIM, 0.5); look.y = 2.45;
-    return { pos, look, fov: 52 };
+    // replay: from his left, a little in front, up at rim height; follows him up to the rim
+    const u = smooth((t - (k.off - 0.15)) / 0.45), hip = rep.tab('hip', t);
+    const pos = RIM.clone().addScaledVector(L.n, -3.4).addScaledVector(L.f, -1.5); pos.y = 2.2 + 0.55 * u;
+    const look = hip.clone().lerp(RIM, 0.08 + 0.42 * u); look.y = hip.y + 0.55 + (2.5 - hip.y - 0.55) * u;
+    return { pos, look, fov: 54 };
   }
   bake(rep, mode) {
     const dt = 1 / 240, lead = mode === 'side' ? 0.18 : 0.1, track = [], end = rep.plan.simEnd, wp = mode === 'side' ? 4.5 : 3, wl = mode === 'side' ? 5.5 : 4.5;
     let pos = null, look = null; const vp = V(), vl = V();
     const step = (x, v, target, om) => { const f = 1 + 2 * dt * om, oo = om * om, hoo = dt * oo, hhoo = dt * hoo, detInv = 1 / (f + hhoo); return [(f * x + dt * v + hhoo * target) * detInv, (v + hoo * (target - x)) * detInv]; };
+    // (the replay is only ever seen from just before the takeoff: start its follow there, settled)
+    const t0 = mode === 'replay' ? rep.k.off - 0.45 : 0;
     for (let t = 0; t <= end + 1e-6; t += dt) {
-      const want = this.ideal(rep, mode, Math.min(t + lead, end));
+      const want = this.ideal(rep, mode, Math.min(Math.max(t, t0) + lead, end));
       if (!pos) { pos = want.pos.clone(); look = want.look.clone(); }
       for (const a of ['x', 'y', 'z']) { [pos[a], vp[a]] = step(pos[a], vp[a], want.pos[a], wp); [look[a], vl[a]] = step(look[a], vl[a], want.look[a], wl); }
       track.push({ pos: pos.clone(), look: look.clone(), fov: want.fov });

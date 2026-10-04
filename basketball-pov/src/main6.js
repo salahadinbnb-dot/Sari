@@ -52,6 +52,20 @@ async function init() {
   const legs = { you: player.rig.len.thigh + player.rig.len.calf };
   const reps = {};
   for (const name of Object.keys(REPS6)) reps[name] = new Rep6(name, REPS6[name].build(clips, legs), player.rig, clips, { ...REPS6[name].plan, simEnd: REPS6[name].simEnd });
+  // the highest point he reaches by each moment of a rep (fingertips, or the top of the ball), for the reach gauge
+  { const X = new THREE.Vector3(1, 0, 0), rig = player.rig;
+    for (const rep of Object.values(reps)) {
+      const HZ = 120, n = Math.ceil(rep.plan.simEnd * HZ) + 1, tab = new Float32Array(n); let best = 0;
+      for (let i = 0; i < n; i++) {
+        const t = i / HZ;
+        if (t < rep.k.off - 0.3) { tab[i] = 0; continue; }
+        const Y = rep.youPose(t); rig.applyMocap(Y.T, Y.T.src, Y.opt);
+        let top = 0; for (const s of ['L', 'R']) top = Math.max(top, rig.P[s + '_Hand'].y + X.clone().applyQuaternion(rig.W[s + '_Hand']).y * 0.19);
+        const b = rep.ballAt(t); if (b) top = b.y + 0.12;
+        best = Math.max(best, top); tab[i] = best;
+      }
+      rep.reachTab = tab; rep.reachAt = (t) => tab[Math.max(0, Math.min(n - 1, Math.round(t * HZ)))];
+    } }
   const ball = makeBall(scene);
   const marks = new Marks6(scene, reps);
   const cam = new Cam6(reps);
@@ -175,7 +189,7 @@ window.events = () => {
       const push = (arr, st, extra = {}) => { if (st >= s.from && st < s.to) arr.push({ t: v0 + (st - s.from) / s.rate, rate: s.rate, ...extra }); };
       for (const f of rep.footfalls) push(ev.steps, f.t, { gain: f.gain, plant: !!f.plant });
       push(ev.whoosh, rep.k.off - 0.02);
-      if (rep.plan.kind === 'touch') push(ev.rimTouch, rep.touch.t);
+      if (rep.plan.kind === 'touch') push(ev.rimTouch, rep.touch.t - 0.004); // (just before the freeze on it)
       else { push(ev.slam, rep.d.rel + 0.01); push(ev.swish, rep.d.rel + 0.03); for (const b of rep.flight.bounces) push(ev.bounces, b.t, { gain: Math.min(1, b.v / 7) }); }
     }
     vt += n / FPS; prev = s;
