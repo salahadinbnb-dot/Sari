@@ -418,10 +418,12 @@ export class Rep {
     return this._fo === 'busy' ? null : this._fo;
   }
   // a miss (plan.miss): the ball comes in a touch short and catches the front of the rim, where its centre sits just
-  // outside the ring and above it; (plan.miss.side, in metres: + to the shooter's right) shades it left or right
+  // outside the ring and above it - or (plan.miss.long) a touch long, its leading edge on the back rim, centre just
+  // inside the ring; either way it comes back off toward the shooter. (plan.miss.side, in metres: + to the shooter's
+  // right) shades it left or right
   missPoint() {
     const P0 = this.plan, h = this.tab('hip', P0.release), s = V(h.x - RIM.x, 0, h.z - RIM.z).normalize(), r = V(s.z, 0, -s.x);
-    return RIM.clone().addScaledVector(s, (P0.miss.long ? -1 : 1) * (0.2286 + 0.075)).addScaledVector(UP, 0.095).addScaledVector(r, P0.miss.side || 0);
+    return RIM.clone().addScaledVector(s, P0.miss.long ? -(0.2286 - 0.075) : 0.2286 + 0.075).addScaledVector(UP, 0.095).addScaledVector(r, P0.miss.side || 0);
   }
   // ...and off it: reflected about the contact normal (restitution 0.55), then free - gravity, floor bounces
   // (restitution 0.62, a little friction each time) and a roll; tabulated once
@@ -431,7 +433,7 @@ export class Rep {
       const q = this.missPoint(), T = P0.rim - P0.release, a = this._rel;
       const vin = V((q.x - a.x) / T, (q.y - a.y + 0.5 * G9 * T * T) / T - G9 * T, (q.z - a.z) / T);
       const h = this.tab('hip', P0.release), s = V(h.x - RIM.x, 0, h.z - RIM.z).normalize();
-      const n = s.clone().multiplyScalar(P0.miss.long ? -0.075 : 0.075).addScaledVector(UP, 0.095).normalize();
+      const n = s.clone().multiplyScalar(0.075).addScaledVector(UP, 0.095).normalize();
       const vout = vin.clone().addScaledVector(n, -(1 + 0.55) * vin.dot(n)).addScaledVector(V(s.z, 0, -s.x), (P0.miss.kick ?? 0.35));
       const dt = 1 / HZ, pts = [], hits = []; let p = q.clone(), v = vout.clone();
       for (let tt = P0.rim; tt <= P0.simEnd + 1e-6; tt += dt) {

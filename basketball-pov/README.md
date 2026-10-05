@@ -2,7 +2,8 @@
 
 2K-style gameplay clips and breakdowns, rendered from three.js and driven by real motion capture.
 
-- **v9 (latest): film room, "Lockdown".** You're the defender this time: staying down on the fake, mirroring a good ball handler's cross, and helping and recovering as a team, each ending in a contested miss. [`out/lockdown.mp4`](out/lockdown.mp4) (1080×1920 portrait, 30 fps, H.264 + AAC)
+- **v10 (latest): film room, "Shoot Over Him".** An iso pull-up into a good contest, in three beats: gather the ball into both hands, set your feet with a 1-2, then rise straight up and release over his hand. Then the same iso pulled up without stopping, drifting into him. [`out/shoot_over_him.mp4`](out/shoot_over_him.mp4) (1080×1920 portrait, 30 fps, H.264 + AAC)
+- v9: film room, "Lockdown". You're the defender this time: staying down on the fake, mirroring a good ball handler's cross, and helping and recovering as a team, each ending in a contested miss. [`out/lockdown.mp4`](out/lockdown.mp4) (1080×1920 portrait, 30 fps, H.264 + AAC)
 - v8: film room, "Make Him Move". How a shooter who isn't fast or strong beats a quicker defender: head fake, shoulder fake, hesi pull-up, step-back, each into a pull-up over him, with the skeletons in the gym. [`out/make_him_move.mp4`](out/make_him_move.mp4) (1080×1920 portrait, 30 fps, H.264 + AAC)
 - v7: film room, "Get Your Hands On It". Steals against a good dribbler, when he's beaten you, and off the ball, with the skeletons in the gym. [`out/hands_on_it.mp4`](out/hands_on_it.mp4) (1080×1920 portrait, 30 fps, H.264 + AAC)
 - v6: film room, "Get Up". How to approach the rim, a rim touch, then a tomahawk dunk, with the skeleton in the gym. [`out/get_up.mp4`](out/get_up.mp4) (1080×1920 portrait, 30 fps, H.264 + AAC)
@@ -26,6 +27,31 @@ It writes three files:
 - `clip_overlay.mp4`: the footage with the tracked skeleton drawn on it.
 - `clip_pose.mp4`: the skeleton alone on black, the pose-reference format that AI video tools take.
 - `clip.json`: per-frame 2D image landmarks with visibility, plus 3D world landmarks in metres around the hips.
+
+## v10: what it shows
+
+Two reps of an isolation pull-up with a hand in your face. The floor ring and arrow are under you: green while you're
+over your feet, red while your momentum is still carrying you. The footprints mark your 1-2, and on the release freeze
+tags mark the ball and his highest fingertip. The strip marks the shot and the closest-defender distance at the
+release.
+
+| Rep | What it shows |
+|---|---|
+| 1 · Gather, set, rise | He's set a stride and a half off and won't bite on anything. One hard dribble at him. The ball comes up into both hands on the way up as your first foot lands (the gather), then the 1-2 into a square stance, knees bent, toes at the rim, and your momentum stops there. Straight up, release at the top, above his hand: 2.7 ft, and it's good. You land 0.14 m from your takeoff. |
+| 2 · Don't drift | The same iso off a hard drive, pulled up without stopping. You take off still going forward and float 0.75 m into him, so his hand is right on the ball (2.0 ft), and the shot comes off the back rim. |
+
+The numbers come from:
+
+- **NBA.com tracking, 2024-25 regular season:** pull-up 2s by closest defender, 39.7% at 2-4 ft and 48.0% at 6+ ft (35.9% inside 2 ft). Pull-up 3s go from 27.5% to 36.3%.
+- **NBA Official Rules:** Rule 4 Section III defines the gather, and Rule 10 Section XIII gives a player who gathers while dribbling two steps.
+- **Li et al. 2024** (Applied Sciences 14(20):9582): 14 male college players got the ball out quicker and released it higher when guarded.
+- **Measured in the scene:** the closest-defender distance at each release, and how far you landed from your takeoff.
+
+## How v10 is made
+
+- **Engine:** the v5/v8/v9 page and rep engine, plus a read of your base (how fast your hips are still moving over your feet) for the floor meter and strip, footprints for the 1-2, height tags on the release freeze, and a long miss off the back rim.
+- **Motion:** 124_05 for both shots: its triple threat, one-dribble pull-up and jump, with the 60° turn of its catch taken out so you face him the whole way. 78_32's drive leads into the drift, with the jump carrying 1.3 m/s forward. His contest is 78_30's stance into 124_05's jump.
+- **Files:** `src/play10.js`, `src/hud10.js`, `src/hud10.css`, `src/timeline10.js`, `src/main10.js`.
 
 ## v9: what it shows
 
@@ -298,6 +324,8 @@ A right-wing isolation with the clock running out and your team down two.
 npm install
 pip install pillow numpy scipy imageio-ffmpeg trimesh networkx mediapipe
 npm run assets      # Rocketbox models + uniforms, CMU mocap clips
+npm run preview:v10 # quick 540x960 check of v10
+npm run render:v10  # final 1080x1920 v10 with audio -> out/shoot_over_him.mp4
 npm run preview:v9  # quick 540x960 check of v9
 npm run render:v9   # final 1080x1920 v9 with audio -> out/lockdown.mp4
 npm run preview:v8  # quick 540x960 check of v8

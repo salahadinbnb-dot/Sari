@@ -73,7 +73,7 @@ export const REPS = {
       const release = simOf(B, 3.38);
       // him: set where your drift is taking you - a stride past your release point along the way you're floating
       const K = you.hip(tOff), R0 = you.hip(release), dl = Math.hypot(R0.x - K.x, R0.z - K.z) || 1;
-      const spot = { x: R0.x + (R0.x - K.x) / dl * 0.8, z: R0.z + (R0.z - K.z) / dl * 0.8 };
+      const spot = { x: R0.x + (R0.x - K.x) / dl * 0.7, z: R0.z + (R0.z - K.z) / dl * 0.7 };
       const d1 = contestTracks(clips, legs, you, tOff, 0, tOff, 0, spot);
       P.contest = [{ from: tOff - 0.05, rise: 0.22, to: release + 0.55, side: 'L', reach: 0.12 }];
       P.beats = { gather: P.gatherAt + 0.02, rise: release - 0.01 };
