@@ -101,8 +101,15 @@ export class Track {
     const h = hipAt(u);
     const w = smooth((u - c.from) / (c.ramp || 0.2));
     const off = h.sub(c._h0).multiplyScalar((c.k - 1) * w); off.y = 0;
-    // a jump that keeps the run-up's momentum (c.carry: world m/s): carried along over the airborne part
-    if (c.carry) { const air = Math.max(0, u - c.from) / (sg.rate || 1); off.x += c.carry.x * air; off.z += c.carry.z * air; }
+    // a jump that keeps the run-up's momentum (c.carry: world m/s): carried along over the airborne part; c.carryIn
+    // ({ v, dur }: m/s, s) is extra speed along it at c.from, braked off over dur - a run-up that slows into the jump
+    // without ever stopping
+    if (c.carry) {
+      const air = Math.max(0, u - c.from) / (sg.rate || 1);
+      let d = air;
+      if (c.carryIn) { const { v, dur } = c.carryIn, sp = Math.hypot(c.carry.x, c.carry.z) || 1; d += v / sp * dur / 3 * (1 - (1 - Math.min(air, dur) / dur) ** 3); }
+      off.x += c.carry.x * d; off.z += c.carry.z * d;
+    }
     for (const v of Object.values(T.pos)) v.add(off);
   }
   clipTime(sg, t) {

@@ -118,7 +118,7 @@ export class Hud10 {
              <div class="list"><div>1 · Gather, set, rise</div><div>2 · Don't drift</div></div>
              <div class="key">Ring on the floor = your feet · Arrow = where your weight is going<br><b class="g">Green</b>: over your feet · <b class="r">Red</b>: drifting</div>`
           : `<div class="big">Gather on<br>the way <em>up.</em></div><div class="big" style="margin-top:40px">Set your<br><em>feet.</em></div><div class="big" style="margin-top:40px">Rise <em>over</em><br>his hand.</div>
-             <div class="src">Stats: NBA.com player tracking, 2024-25 regular season (pull-ups by closest defender) · Gather and steps: NBA Official<br>Rules, Rule 4 III and Rule 10 XIII · Under a contest, shooters release quicker and higher: Li et al. 2024, Appl Sci 14:9582<br>(14 college players) · Motion: CMU Graphics Lab Motion Capture Database</div>`;
+             <div class="src">Stats: NBA.com player tracking, 2024-25 regular season (pull-ups by closest defender) · Gather and steps: NBA Official<br>Rules, Rule 4 III and Rule 10 XIII · Under a contest, shooters release quicker and higher: Li et al. 2024, Appl Sci 14:9582<br>(14 college players) · Reaction time: Singh 2020, IJPNPE 5(1):174 (45 players, 0.22 s) · Motion: CMU Graphics Lab Motion Capture Database</div>`;
       }
       const o = k === 'intro' ? 1 - smooth((e - (S.v1 - S.v0 - 0.35)) / 0.35) : smooth(e / 0.4);
       this.card.style.opacity = String(o);

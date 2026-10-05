@@ -542,7 +542,7 @@ export class Rep {
 
   // the shooter's own balance: his XcoM against the base of his (locked) feet while they're down (for the floor meter),
   // and open: 0 set, 1 his momentum is carrying him off his feet - drifting
-  balanceYou(t) {
+  balanceRaw(t) {
     const T = this.T, n = T.n, i = clamp(Math.round(t * HZ), 0, n - 1), j0 = Math.max(0, i - 2), j1 = Math.min(n - 1, i + 2);
     const c = T.youCom[i], v = T.youCom[j1].clone().sub(T.youCom[j0]).multiplyScalar(HZ / Math.max(1, j1 - j0)); v.y = 0;
     const x = c.clone().addScaledVector(v, 1 / W0); x.y = 0;
@@ -560,9 +560,22 @@ export class Rep {
       if (side < 0) out = Math.max(out, -side);
     }
     // (a pull-up steps into the shot at ~1 m/s, so the XcoM is a little ahead of the feet even when it's under control:
-    // what separates set from drifting is how fast the body is still going - over ~1.8 m/s it carries you off)
-    const speed = v.length();
-    return { x, c: V(c.x, 0, c.z), v, base, out, speed, open: smooth((speed - 1.3) / 0.6) };
+    // on the way in, what separates set from drifting is how fast the body is still going - over ~1.8 m/s it carries
+    // you off. At the push-off (both feet down), set means the XcoM is back inside your feet; in the air, anything
+    // over ~0.9 m/s is you floating)
+    const speed = v.length(), P = this.plan;
+    let open = smooth((speed - 1.3) / 0.6);
+    if (P.takeoff !== undefined) {
+      if (t >= P.takeoff && t <= P.land) open = smooth((speed - 0.5) / 0.4);
+      else if (t >= P.takeoff - 0.04 && t < P.takeoff) open = smooth((out - 0.12) / 0.15);
+    }
+    return { x, c: V(c.x, 0, c.z), v, base, out, speed, open };
+  }
+  // the same, with `open` held to its worst over +-0.09 s (no flickers on the meter or the strip)
+  balanceYou(t) {
+    const b = this.balanceRaw(t);
+    for (const d of [-0.09, -0.06, -0.03, 0.03, 0.06, 0.09]) b.open = Math.max(b.open, this.balanceRaw(t + d).open);
+    return b;
   }
 
   // ---------- poses ----------

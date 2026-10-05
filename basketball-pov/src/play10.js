@@ -15,13 +15,15 @@ const yawTo = (p, q) => Math.atan2(q.x - p.x, q.z - p.z);
 const JUMP_STRAIGHT = { from: 3.15, to: 3.72, k: 0.33, ramp: 0.12 };
 const simOf = (sg, ct) => sg.at + (ct - sg.from) / (sg.rate ?? 1);
 
-// the defender: square to you a stride off in his stance (78_30's stop, kept alive), then straight up with you -
-// out of his stance into 124_05's jump, cut in a beat after your takeoff, hands up
+// the defender: square to you a stride off in his stance (78_30's stop, kept alive), hand coming up as you set, then
+// straight up with you - out of his stance into 124_05's jump. He won't bite on a fake, so he leaves the floor when he
+// sees you leave it: a reaction time later (`lag`, ~0.2 s; visual reaction time in basketball players is ~0.22 s,
+// Singh 2020)
 // (placed `gap` metres toward the rim from where you are at tRef, or at `at` if given)
-function contestTracks(clips, legs, you, tRef, gap, takeoff, side = 0, at = null) {
+function contestTracks(clips, legs, you, tRef, gap, takeoff, side = 0, at = null, lag = 0.2) {
   const h = you.hip(tRef), a = Math.atan2(RIM.x - h.x, RIM.z - h.z), F = you.at(tRef).yaw, lf = { x: Math.cos(F), z: -Math.sin(F) };
   const at0 = at || { x: h.x + Math.sin(a) * gap + lf.x * side, z: h.z + Math.cos(a) * gap + lf.z * side };
-  const jumpAt = takeoff + 0.08 - (3.17 - 3.05);
+  const jumpAt = takeoff + lag - (3.17 - 3.05);
   const segs = [{ clip: '78_30', from: 0.93, at: 0, idle: { amp: 0.1, period: 1.6 } },
     { clip: '124_05', from: 3.05, at: jumpAt, inert: 0.25, unwind: { from: 3.15, to: 3.72, ramp: 0.08 }, compress: { ...JUMP_STRAIGHT, k: 0.1 } }];
   return anchoredTrack(clips, segs, legs.d1, tRef, { ...at0, yaw: yawTo(at0, h) });
@@ -61,14 +63,15 @@ export const REPS = {
     build(clips, legs) {
       const P = this.plan;
       // you: the same iso off a hard drive (78_32, two dribbles), pulled up without stopping: 124_05 cut in late, in
-      // its step-in, and the jump carries the drive forward (1.3 m/s in the air) - you go up and forward, into him
+      // its step-in, and you never stop - the drive is still carrying you forward (1.3 m/s) through the 1-2, the dip
+      // and the takeoff, so you go up and forward, into him
       const A = { clip: '78_32', from: 0.0, at: 0, rate: 0.9 };
       const push = findPushes(clips['78_32'], 0.8, 1.2, 'R')[0], s1 = simOf(A, push.c1);
       P.dribble = [0.05, s1 + 0.02]; P.gatherAt = s1 + 0.22;
-      const B = { clip: '124_05', from: 2.86, at: P.gatherAt + 0.02, inert: 0.3, shot: true, unwind: { from: 3.17, to: 3.72, ramp: 0.08 }, compress: { ...JUMP_STRAIGHT, k: 0.33 } };
+      const B = { clip: '124_05', from: 2.86, at: P.gatherAt + 0.02, inert: 0.3, shot: true, unwind: { from: 3.17, to: 3.72, ramp: 0.08 }, compress: { ...JUMP_STRAIGHT, from: 2.88, ramp: 0.15, k: 0.33 } };
       const tOff = simOf(B, 3.17), SPOT = { x: 2.6, z: 5.0 }; P.takeoffAt = tOff;
       const probe = anchoredTrack(clips, [A, B], legs.you, tOff, { ...SPOT, yaw: yawTo(SPOT, RIM) });
-      const F = probe.at(tOff).yaw; B.compress.carry = { x: Math.sin(F) * 1.3, z: Math.cos(F) * 1.3 };
+      const F = probe.at(tOff).yaw; B.compress.carry = { x: Math.sin(F) * 1.3, z: Math.cos(F) * 1.3 }; B.compress.carryIn = { v: 2.2, dur: tOff - B.at };
       const you = anchoredTrack(clips, [A, B], legs.you, tOff, { ...SPOT, yaw: yawTo(SPOT, RIM) });
       const release = simOf(B, 3.38);
       // him: set where your drift is taking you - a stride past your release point along the way you're floating

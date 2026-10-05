@@ -173,7 +173,9 @@ const heights = (rep, st) => {
   const scr = (p) => { const q = p.clone().project(camera); return { x: (q.x + 1) / 2 * W, y: (1 - q.y) / 2 * H0 }; };
   const H0 = H_;
   const out = [{ ...scr(B), text: `BALL ${B.y.toFixed(2)} M`, cls: 'ball' }];
-  if (H) out.push({ ...scr(H), text: `HIS HAND ${H.y.toFixed(2)} M`, cls: 'hand', side: 'left' });
+  if (H) out.push({ ...scr(H), text: `HIS HAND ${H.y.toFixed(2)} M`, cls: 'hand' });
+  // each label off its own side, away from the other point
+  if (out.length === 2) out[out[0].x < out[1].x ? 0 : 1].side = 'left';
   return out;
 };
 const H_ = H;

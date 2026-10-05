@@ -37,20 +37,21 @@ release.
 
 | Rep | What it shows |
 |---|---|
-| 1 · Gather, set, rise | He's set a stride and a half off and won't bite on anything. One hard dribble at him. The ball comes up into both hands on the way up as your first foot lands (the gather), then the 1-2 into a square stance, knees bent, toes at the rim, and your momentum stops there. Straight up, release at the top, above his hand: 2.7 ft, and it's good. You land 0.14 m from your takeoff. |
-| 2 · Don't drift | The same iso off a hard drive, pulled up without stopping. You take off still going forward and float 0.75 m into him, so his hand is right on the ball (2.0 ft), and the shot comes off the back rim. |
+| 1 · Gather, set, rise | He's set a stride and a half off and won't bite on anything. One hard dribble at him. The ball comes up into both hands on the way up as your first foot lands (the gather), then the 1-2 into a square stance, knees bent, toes at the rim, and your momentum stops there. Straight up and release at the top: he jumps when he sees you go, about 0.2 s late, so at the release the ball is at 2.71 m and his hand at 2.46 m. 2.7 ft, and it's good. You land 0.14 m from your takeoff. |
+| 2 · Don't drift | The same iso off a hard drive, pulled up without stopping. You brake from 3.9 m/s through the 1-2 but never stop, take off still going forward and float 0.76 m into him (1.9 ft at the release). The drive's speed goes into the shot, and it comes off the back rim. |
 
 The numbers come from:
 
 - **NBA.com tracking, 2024-25 regular season:** pull-up 2s by closest defender, 39.7% at 2-4 ft and 48.0% at 6+ ft (35.9% inside 2 ft). Pull-up 3s go from 27.5% to 36.3%.
 - **NBA Official Rules:** Rule 4 Section III defines the gather, and Rule 10 Section XIII gives a player who gathers while dribbling two steps.
 - **Li et al. 2024** (Applied Sciences 14(20):9582): 14 male college players got the ball out quicker and released it higher when guarded.
-- **Measured in the scene:** the closest-defender distance at each release, and how far you landed from your takeoff.
+- **Reaction time:** Singh 2020 (Int J Physiol Nutr Phys Educ 5(1):174-176), visual reaction time of 0.22 s in 45 basketball players. He leaves the floor 0.2 s after you do.
+- **Measured in the scene:** the ball and fingertip heights at the release, the closest-defender distance, and how far you landed from your takeoff.
 
 ## How v10 is made
 
-- **Engine:** the v5/v8/v9 page and rep engine, plus a read of your base (how fast your hips are still moving over your feet) for the floor meter and strip, footprints for the 1-2, height tags on the release freeze, and a long miss off the back rim.
-- **Motion:** 124_05 for both shots: its triple threat, one-dribble pull-up and jump, with the 60° turn of its catch taken out so you face him the whole way. 78_32's drive leads into the drift, with the jump carrying 1.3 m/s forward. His contest is 78_30's stance into 124_05's jump.
+- **Engine:** the v5/v8/v9 page and rep engine, plus a read of your base for the floor meter and strip, footprints for the 1-2, height tags on the release freeze, and a long miss off the back rim. The base read has three parts. On the way in, it's how fast you're still going. At the push-off, it's whether your balance point (the extrapolated centre of mass) is back inside your feet. In the air, it's how fast you're floating.
+- **Motion:** 124_05 for both shots: its triple threat, one-dribble pull-up and jump, with the 60° turn of its catch taken out so you face him the whole way. 78_32's drive leads into the drift: you brake through 124_05's 1-2 without stopping, and the jump still carries 1.3 m/s forward. His contest is 78_30's stance into 124_05's jump, a reaction time after yours.
 - **Files:** `src/play10.js`, `src/hud10.js`, `src/hud10.css`, `src/timeline10.js`, `src/main10.js`.
 
 ## v9: what it shows
