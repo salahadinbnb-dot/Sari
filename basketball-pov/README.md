@@ -2,6 +2,7 @@
 
 2K-style gameplay clips and breakdowns, rendered from three.js and driven by real motion capture.
 
+- **Compilation:** every video below, v1 to v10, back to back in one portrait clip. [`out/compilation.mp4`](out/compilation.mp4) (5:27, 720×1280, 30 fps, H.264 + AAC; the landscape v1-v3 sit over a blurred fill)
 - **v10 (latest): film room, "Shoot Over Him".** An iso pull-up into a good contest, in three beats: gather the ball into both hands, set your feet with a 1-2, then rise straight up and release over his hand. Then the same iso pulled up without stopping, drifting into him. [`out/shoot_over_him.mp4`](out/shoot_over_him.mp4) (1080×1920 portrait, 30 fps, H.264 + AAC)
 - v9: film room, "Lockdown". You're the defender this time: staying down on the fake, mirroring a good ball handler's cross, and helping and recovering as a team, each ending in a contested miss. [`out/lockdown.mp4`](out/lockdown.mp4) (1080×1920 portrait, 30 fps, H.264 + AAC)
 - v8: film room, "Make Him Move". How a shooter who isn't fast or strong beats a quicker defender: head fake, shoulder fake, hesi pull-up, step-back, each into a pull-up over him, with the skeletons in the gym. [`out/make_him_move.mp4`](out/make_him_move.mp4) (1080×1920 portrait, 30 fps, H.264 + AAC)
