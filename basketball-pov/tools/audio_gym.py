@@ -199,6 +199,9 @@ for p in ev.get('pokes', []):
     place(mix, verb(slow(whff(), p.get('rate', 1)), 0.25), p['t'] - 0.05, db(-20))
 for f in ev.get('freezes', []):
     place(mix, freeze(), f['t'] - 0.27, db(-24))
+for c in ev.get('curtains', []):
+    # v11: the picture splitting and sliding apart
+    place(mix, swoosh(0.9), c['t'], db(-17))
 
 mix = mix[:, : int(DUR * SR)]
 peak = np.max(np.abs(mix)); mix *= db(-2.0) / (peak + 1e-9)
