@@ -183,7 +183,7 @@ function chip(x, y, text, rgb, dark = '#021a20', size = 34, align = 'center') {
 // a beam of attention: from his eyes to what he's watching, widening as it goes, a ring on the target - or, when the
 // target is out of the picture (the rim, from the side), an arrowhead where the beam leaves it
 function beam(from, to, label, rgb, a) {
-  const A = scr(from); let B = scr(to); const X0 = 60, X1 = W - 60, Y0 = 520, Y1 = H - 520;
+  const A = scr(from); let B = scr(to); const X0 = 60, X1 = W - 60, Y0 = 480, Y1 = H - 400;
   let k = 1; const dx0 = B.x - A.x, dy0 = B.y - A.y;
   if (B.x > X1) k = Math.min(k, (X1 - A.x) / dx0); if (B.x < X0) k = Math.min(k, (X0 - A.x) / dx0);
   if (B.y < Y0) k = Math.min(k, (Y0 - A.y) / dy0); if (B.y > Y1) k = Math.min(k, (Y1 - A.y) / dy0);
@@ -211,7 +211,7 @@ function eyesOn(rep, st, Jd, ballP) {
   if (rep.name === 'rep3') return blend(blend(BALL, HIPS, smooth((st - Q.back) / 0.3)), RIMT, shot);
   if (rep.name === 'rep6') return blend(HIPS, RIMT, shot);
   // live: on his man through the move and the read, then the rim - to sell the fake, then to shoot
-  return blend(HIPS, st < Q.fake + 0.2 ? SELL : RIMT, smooth((st - (Q.fake - 0.35)) / 0.2));
+  return blend(HIPS, st < Q.fake + 0.2 ? SELL : RIMT, smooth((st - (Q.fake - 0.25)) / 0.15));
 }
 function overlay(rep, fr, st, a) {
   g2.clearRect(0, 0, W, H);
@@ -239,14 +239,14 @@ function overlay(rep, fr, st, a) {
     g2.beginPath(); g2.moveTo(A.x, A.y); g2.lineTo(B.x, B.y); g2.stroke();
     g2.beginPath(); g2.moveTo(B.x + Math.cos(ang) * 30, B.y + Math.sin(ang) * 30); g2.lineTo(B.x + Math.cos(ang + 2.3) * 30, B.y + Math.sin(ang + 2.3) * 30); g2.lineTo(B.x + Math.cos(ang - 2.3) * 30, B.y + Math.sin(ang - 2.3) * 30); g2.fill();
     g2.restore();
-    const hp = scr(Jd.Pelvis), text = `HIS WEIGHT: ${at.toFixed(1)} M/S AT YOU`; g2.font = '900 30px BC'; const w = g2.measureText(text).width + 28;
-    g2.globalAlpha = a; chip(clamp(hp.x + 60 + w / 2, 40 + w / 2, W - 40 - w / 2), hp.y - 140, text, CO, '#2a0400', 30); g2.globalAlpha = 1;
+    const hp = scr(Jd.skull.clone().add(new THREE.Vector3(0, 0.3, 0))), text = `HIS WEIGHT: ${at.toFixed(1)} M/S AT YOU`; g2.font = '900 30px BC'; const w = g2.measureText(text).width + 28;
+    g2.globalAlpha = a; chip(clamp(hp.x, 40 + w / 2, W - 40 - w / 2), Math.max(500, hp.y), text, CO, '#2a0400', 30); g2.globalAlpha = 1;
   }
   // the options he sees as his man comes at him
   if (fr.show === 'options') {
     g2.globalAlpha = a;
     chip(W / 2, H - 520, 'SHOOT IT?  HE\'S RIGHT THERE  ✕', CO, '#2a0400', 40);
-    chip(W / 2, H - 450, 'SELL IT, LET HIM FLY BY  ✓', AM, '#1a1200', 40);
+    chip(W / 2, H - 450, 'SELL IT, GET HIM OFF HIS FEET  ✓', AM, '#1a1200', 40);
     g2.globalAlpha = 1;
   }
   // his eyes

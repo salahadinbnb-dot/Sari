@@ -37,7 +37,7 @@ export const SEQ = [
   { rep: 'live', cam: 'duel', freeze: 0.25, dur: 1.1, curtain: true },
   { rep: 'live', cam: 'duel', from: 0.25, to: '@hop0', rate: 0.5, behind: true },
   { rep: 'live', cam: 'duel', from: '@hop0', to: '@read', rate: 0.5, behind: true, show: 'read' },
-  { rep: 'live', cam: 'duel', freeze: '@read', dur: 3.4, behind: true, show: 'read', caption: 'His man has learned it too: he barely<br>bites on the cross, and <b>he\'s running at<br>the step-back.</b> Read: his weight\'s coming.' },
+  { rep: 'live', cam: 'duel', freeze: '@read', dur: 3.4, behind: true, show: 'read', caption: 'His man has learned it too: he barely<br>bites on the cross, and <b>he steps right<br>back in on the step-back.</b> Read: his weight\'s coming.' },
   { rep: 'live', cam: 'duel', from: '@read', to: '@fake0', rate: 0.5, behind: true, show: 'read' },
   { rep: 'live', cam: 'duel', freeze: '@fake0', dur: 3.6, behind: true, show: 'options', caption: 'So he flips it: <b>sell the step-back shot</b>.<br>A piece he already owns, the shot fake,<br>in a new place.' },
   { rep: 'live', cam: 'duel', from: '@fake0', to: '@rel', rate: 0.5, behind: true },
