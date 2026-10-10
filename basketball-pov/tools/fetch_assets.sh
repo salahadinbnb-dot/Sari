@@ -52,4 +52,6 @@ for m in heavy full; do
   [ -s assets/track/pose_landmarker_$m.task ] || curl -sf -o assets/track/pose_landmarker_$m.task \
     "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_$m/float16/latest/pose_landmarker_$m.task"
 done
+# The v12 brain (fsaverage + MNI152 via TemplateFlow)
+bash tools/fetch_brain.sh
 echo "assets ready"

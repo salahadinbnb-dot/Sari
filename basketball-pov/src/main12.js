@@ -1,15 +1,16 @@
 // v12 "read the room": one guy walks up to three people mid-conversation, twice - checked out (on his phone, his
 // mind somewhere else, talking on autopilot, missing every cue) and locked in (reading faces first, catching that
 // she got cut off, bringing her in, linking two things he knows into something new) - then the loop getting quicker
-// with practice. Split screen: what he does on top, what his brain does underneath at the same moment (a simplified
-// side view; deep regions dashed). 2D canvas, 1080x1920 at 30 fps.
-const W = 1080, H = 1920, FPS = 30;
+// with practice. Split screen: what he does on top, what his brain does underneath at the same moment (a real brain in
+// 3D, src/brain12.js, with the labels and signals drawn over it). 2D canvas over WebGL, 1080x1920 at 30 fps.
+import { makeBrain, SPOTS } from './brain12.js';
+const W = 1080, H = 1920, FPS = 30, BTOP = 992;
 const cv = document.getElementById('cv'), g = cv.getContext('2d');
 const clamp = (x, a, b) => Math.min(b, Math.max(a, x));
 const smooth = (u) => { u = clamp(u, 0, 1); return u * u * (3 - 2 * u); };
 const lerp = (a, b, u) => a + (b - a) * u;
 const env = (t, t0, t1, r = 0.2) => smooth((t - t0) / r) * (1 - smooth((t - t1) / r));
-const TOP = 936, BR = { x: 140, y: 1072, w: 800, h: 560 };
+const TOP = 936;
 
 // ---------------------------------------------------------------- the story, in seconds of video
 const O = 3.8, FL = 17.0, I = 18.4, F = 33.0, END = 46.0, OUT = 41.5;
@@ -113,23 +114,22 @@ const TALK = REPS.map(r => ['A', r.t - 0.5, r.t + r.d]);
 const EYES = [[I + 0.8, I + 1.25, 'A'], [I + 1.3, I + 1.75, 'B'], [I + 1.8, I + 2.4, 'C'], [I + 3.0, I + 5.0, 'C'], [I + 7.0, I + 8.6, 'C'], [I + 8.8, I + 10.2, 'B'],
   ...REPS.map(r => [r.t + 0.1, r.t + r.d, 'C'])];
 
-// ---------------------------------------------------------------- the brain (simplified, side view, front to the left)
-const OUTLINE = [[0.02, 0.48], [0.05, 0.3], [0.13, 0.15], [0.27, 0.05], [0.45, 0.01], [0.62, 0.03], [0.78, 0.1], [0.9, 0.22], [0.97, 0.37], [0.99, 0.5], [0.95, 0.6], [0.88, 0.66],
-  [0.93, 0.72], [0.92, 0.84], [0.84, 0.9], [0.72, 0.88], [0.66, 0.82], [0.62, 0.86], [0.6, 0.99], [0.54, 0.99], [0.53, 0.84], [0.45, 0.8], [0.33, 0.78], [0.25, 0.72], [0.24, 0.64], [0.18, 0.66], [0.09, 0.62], [0.04, 0.56]];
+// ---------------------------------------------------------------- the brain's areas (where they are: SPOTS in brain12.js)
 const R = {
-  see: { p: [0.92, 0.48], label: 'SEEING', col: '62,230,255', lx: 1, ly: -1 },
-  face: { p: [0.66, 0.76], label: 'FACES', col: '62,230,255', deep: true, lx: 1, ly: 1 },
-  emo: { p: [0.33, 0.66], label: 'EMOTION', col: '255,107,94', deep: true, lx: -1, ly: 1 },
-  tpj: { p: [0.7, 0.4], label: 'WHAT ARE THEY THINKING?', col: '190,150,255', lx: 1, ly: -1 },
-  mind: { p: [0.1, 0.42], label: 'READING MINDS', col: '190,150,255', deep: true, lx: -1, ly: -1 },
-  plan: { p: [0.22, 0.25], label: 'PLANNING', col: '230,240,255', lx: -1, ly: -1 },
-  speech: { p: [0.25, 0.53], label: 'PUTTING IT INTO WORDS', col: '230,240,255', lx: -1, ly: 1 },
-  off: { p: [0.36, 0.32], label: 'SOMETHING\'S OFF', col: '255,77,94', deep: true, lx: 1, ly: -1 },
-  reward: { p: [0.37, 0.52], label: 'IT LANDED (FEEDBACK)', col: '255,194,58', deep: true, lx: 1, ly: 1 },
-  mem: { p: [0.5, 0.65], label: 'MEMORY', col: '120,220,170', deep: true, lx: 1, ly: -1 },
-  dmn: { p: [0.62, 0.22], label: 'INNER NETWORK', col: '190,150,255', deep: true, lx: 1, ly: -1 },
+  see: { label: 'SEEING', col: '62,230,255', lx: 1, ly: -1 },
+  face: { label: 'FACES', col: '62,230,255', lx: 1, ly: 1 },
+  emo: { label: 'EMOTION', col: '255,107,94', lx: -1, ly: 1 },
+  tpj: { label: 'WHAT ARE THEY THINKING?', col: '190,150,255', lx: 1, ly: -1 },
+  mind: { label: 'READING MINDS', col: '190,150,255', lx: -1, ly: -1 },
+  plan: { label: 'PLANNING', col: '230,240,255', lx: -1, ly: -1 },
+  speech: { label: 'PUTTING IT INTO WORDS', col: '230,240,255', lx: -1, ly: 1 },
+  off: { label: 'SOMETHING\'S OFF', col: '255,77,94', lx: 1, ly: -1 },
+  reward: { label: 'IT LANDED (FEEDBACK)', col: '255,194,58', lx: 1, ly: 1 },
+  mem: { label: 'MEMORY', col: '120,220,170', lx: 1, ly: -1 },
+  dmn: { label: 'INNER NETWORK', col: '190,150,255', lx: 1, ly: -1 },
 };
-const bp = (n) => ({ x: BR.x + R[n].p[0] * BR.w, y: BR.y + R[n].p[1] * BR.h });
+let PROJ = {};
+const bp = (n) => PROJ[n] || { x: W / 2, y: BTOP + 300 };
 // activity: [region, t0, t1, level]
 const ACT = [
   // checked out: the inner hubs busy with his own stuff; what comes in from outside barely registers
@@ -302,52 +302,22 @@ function chip(x, y, text, rgb, ink = '#021a20', size = 26, align = 'center', a =
 }
 
 // ---------------------------------------------------------------- drawing: the brain
-function spline(pts, close = true) {
-  const n = pts.length; g.beginPath();
-  for (let i = 0; i < (close ? n : n - 1); i++) {
-    const p0 = pts[(i - 1 + n) % n], p1 = pts[i], p2 = pts[(i + 1) % n], p3 = pts[(i + 2) % n];
-    if (i === 0) g.moveTo(p1[0], p1[1]);
-    g.bezierCurveTo(p1[0] + (p2[0] - p0[0]) / 6, p1[1] + (p2[1] - p0[1]) / 6, p2[0] - (p3[0] - p1[0]) / 6, p2[1] - (p3[1] - p1[1]) / 6, p2[0], p2[1]);
-  }
-  if (close) g.closePath();
-}
-const toB = ([x, y]) => [BR.x + x * BR.w, BR.y + y * BR.h];
-function brainBg(t) {
-  const bg = g.createLinearGradient(0, TOP, 0, H); bg.addColorStop(0, '#060b16'); bg.addColorStop(1, '#03060c');
-  g.fillStyle = bg; g.fillRect(0, TOP, W, H - TOP);
-  g.strokeStyle = 'rgba(62,230,255,0.05)'; g.lineWidth = 1;
-  for (let x = 0; x <= W; x += 40) { g.beginPath(); g.moveTo(x, TOP + 56); g.lineTo(x, H); g.stroke(); }
-  for (let y = TOP + 56; y <= H; y += 40) { g.beginPath(); g.moveTo(0, y); g.lineTo(W, y); g.stroke(); }
-  // the brain: soft fill, outline, lobes and folds
-  const pts = OUTLINE.map(toB);
-  spline(pts); const fill = g.createRadialGradient(BR.x + BR.w * 0.45, BR.y + BR.h * 0.4, 40, BR.x + BR.w * 0.5, BR.y + BR.h * 0.5, BR.w * 0.6);
-  fill.addColorStop(0, 'rgba(40,62,96,0.55)'); fill.addColorStop(1, 'rgba(16,26,46,0.6)'); g.fillStyle = fill; g.fill();
-  g.strokeStyle = 'rgba(150,200,255,0.55)'; g.lineWidth = 3; g.stroke();
-  g.save(); spline(pts); g.clip();
-  g.strokeStyle = 'rgba(150,200,255,0.16)'; g.lineWidth = 2.2;
-  for (let k = 0; k < 22; k++) {
-    const sx = 0.06 + ((k * 0.137) % 0.86), sy = 0.08 + ((k * 0.291) % 0.6); g.beginPath();
-    for (let i = 0; i <= 10; i++) { const u = i / 10, [x, y] = toB([sx + u * 0.12, sy + Math.sin(u * 9 + k) * 0.03 + u * 0.05 * ((k % 3) - 1)]); i ? g.lineTo(x, y) : g.moveTo(x, y); }
-    g.stroke();
-  }
-  g.strokeStyle = 'rgba(150,200,255,0.35)'; g.lineWidth = 3;
-  spline([[0.26, 0.63], [0.36, 0.58], [0.47, 0.55], [0.58, 0.5]].map(toB), false); g.stroke(); // lateral fissure
-  spline([[0.5, 0.02], [0.47, 0.18], [0.45, 0.32], [0.43, 0.48]].map(toB), false); g.stroke(); // central sulcus
-  g.strokeStyle = 'rgba(150,200,255,0.18)';
-  for (let k = 0; k < 5; k++) { spline([[0.68, 0.74 + k * 0.03], [0.78, 0.71 + k * 0.035], [0.9, 0.75 + k * 0.02]].map(toB), false); g.stroke(); } // cerebellum
-  g.restore();
-}
 function act(n, t) { let a = 0, lab; for (const [r, t0, t1, l, L] of ACT) if (r === n) { const v = l * env(t, t0, t1, 0.18); if (v > a) { a = v; lab = L; } } return { a, lab }; }
 function sigPath(a, b) { const A = bp(a), B = bp(b), mx = (A.x + B.x) / 2, my = (A.y + B.y) / 2, dx = B.x - A.x, dy = B.y - A.y, L = Math.hypot(dx, dy) || 1; return { A, B, C: { x: mx - dy / L * L * 0.18, y: my + dx / L * L * 0.18 } }; }
 const qb = (P, u) => ({ x: (1 - u) * (1 - u) * P.A.x + 2 * (1 - u) * u * P.C.x + u * u * P.B.x, y: (1 - u) * (1 - u) * P.A.y + 2 * (1 - u) * u * P.C.y + u * u * P.B.y });
 function brain(t) {
-  brainBg(t);
-  // the practiced path, live: thicker every time it runs
+  // the real brain: render it with this moment's activity, then put the labels and signals over it
+  const acts = {}; for (const n of Object.keys(R)) acts[n] = act(n, t).a;
+  brain3.render(t, acts);
+  for (const n of Object.keys(R)) { const p = brain3.project(n); PROJ[n] = { x: p.x, y: p.y + BTOP }; }
+  g.clearRect(0, TOP, W, H - TOP);
+  // the practiced path, live: brighter every time it runs
   const fastK = t > F ? REPS.filter(r => t > r.t).length : 0;
   if (fastK) {
     const c = ['see', 'face', 'emo', 'tpj', 'mind', 'plan', 'speech'];
-    g.save(); g.strokeStyle = `rgba(255,194,58,${0.18 + 0.16 * fastK})`; g.lineWidth = 3 + 5 * fastK; g.shadowColor = 'rgba(255,194,58,0.6)'; g.shadowBlur = 10 + 8 * fastK;
+    g.save(); g.strokeStyle = `rgba(255,194,58,${0.3 + 0.2 * fastK})`; g.lineWidth = 2 + 1.5 * fastK; g.lineCap = 'round'; g.shadowColor = 'rgba(255,194,58,0.9)'; g.shadowBlur = 8 + 5 * fastK;
     for (let i = 0; i < c.length - 1; i++) { const P = sigPath(c[i], c[i + 1]); g.beginPath(); g.moveTo(P.A.x, P.A.y); g.quadraticCurveTo(P.C.x, P.C.y, P.B.x, P.B.y); g.stroke(); }
+    g.fillStyle = `rgba(255,214,120,${0.4 + 0.2 * fastK})`; for (const n of c) { const p = bp(n); g.beginPath(); g.arc(p.x, p.y, 4 + fastK, 0, Math.PI * 2); g.fill(); }
     g.restore();
   }
   // regions
@@ -357,17 +327,14 @@ function brain(t) {
     g.save(); g.strokeStyle = `rgba(${col},${0.55 * k})`; g.lineWidth = 4; g.setLineDash([3, 9]); g.shadowColor = `rgba(${col},${k})`; g.shadowBlur = 12;
     for (let i = 0; i < ns.length; i++) for (let j = i + 1; j < ns.length; j++) { const A = bp(ns[i]), B = bp(ns[j]); g.beginPath(); g.moveTo(A.x, A.y); g.lineTo(B.x, B.y); g.stroke(); }
     g.restore();
-    if (label) { const c = ns.map(bp).reduce((m, p) => ({ x: m.x + p.x / ns.length, y: m.y + p.y / ns.length }), { x: 0, y: 0 }); chip(c.x, BR.y + 36, label, col, '#1a1200', 24, 'center', k); }
+    if (label) { const c = ns.map(bp).reduce((m, p) => ({ x: m.x + p.x / ns.length, y: m.y + p.y / ns.length }), { x: 0, y: 0 }); chip(c.x, BTOP + 116, label, col, '#1a1200', 24, 'center', k); }
   }
   for (const [n, r] of Object.entries(R)) {
-    const { a, lab } = act(n, t), { x, y } = bp(n), rad = 26 + 26 * a;
-    const gr = g.createRadialGradient(x, y, 0, x, y, rad * 2.2); gr.addColorStop(0, `rgba(${r.col},${0.15 + 0.85 * a})`); gr.addColorStop(0.45, `rgba(${r.col},${0.05 + 0.45 * a})`); gr.addColorStop(1, `rgba(${r.col},0)`);
-    g.fillStyle = gr; g.beginPath(); g.arc(x, y, rad * 2.2, 0, Math.PI * 2); g.fill();
-    g.save(); g.strokeStyle = `rgba(${r.col},${0.25 + 0.75 * a})`; g.lineWidth = 3; if (r.deep) g.setLineDash([8, 7]); g.beginPath(); g.arc(x, y, 20 + 8 * a, 0, Math.PI * 2); g.stroke(); g.restore();
+    const { a, lab } = act(n, t), { x, y } = bp(n);
     if (a > 0.08) {
       const lx = x + r.lx * 70, ly = y + r.ly * 64;
       if (lab !== '') { g.save(); g.globalAlpha = smooth(a * 2); g.strokeStyle = `rgba(${r.col},0.8)`; g.lineWidth = 2; g.beginPath(); g.moveTo(x + r.lx * 24, y + r.ly * 20); g.lineTo(lx, ly); g.stroke(); g.restore(); }
-      if (lab !== '') chip(lx, ly, (lab || r.label) + (r.deep ? ' ·' : ''), r.col, '#0a0d14', 26, r.lx > 0 ? 'left' : 'right', smooth(a * 2));
+      if (lab !== '') chip(lx, ly, (lab || r.label), r.col, '#0a0d14', 26, r.lx > 0 ? 'left' : 'right', smooth(a * 2));
     }
   }
   // signals
@@ -397,7 +364,7 @@ function brain(t) {
     const w = chip(W - 40, TOP + 100, `${L.text}:  ${val}`, L.col, '#04070c', 30, 'right', a);
     if (L.prev) chip(W - 40, TOP + 150, L.prev, '255,77,94', '#1a0003', 24, 'right', a);
   }
-  g.save(); g.font = '700 22px BC'; g.fillStyle = 'rgba(255,255,255,0.45)'; g.fillText('ILLUSTRATION, NOT A SCAN · SEE-THROUGH · DASHED = DEEP OR MIDLINE', 40, TOP + 102); g.restore();
+  g.save(); g.font = '700 22px BC'; g.fillStyle = 'rgba(255,255,255,0.45)'; g.fillText('ILLUSTRATION, NOT A SCAN', 40, TOP + 102); g.restore();
 }
 
 // ---------------------------------------------------------------- the frame
@@ -416,7 +383,8 @@ const CARD = {
     <div class="src">The brain view is an illustration of areas that tend to be involved, not a scan. Mind wandering: Killingsworth & Gilbert 2010, Science 330:932 (46.9% of check-ins); Mason et al. 2007 ·
     Weaker response to outside cues and feedback when off-task: Kam et al. 2011, J Cogn Neurosci 23:460; Kam et al. 2012, Front Hum Neurosci 6:329 · Thinking about others: mPFC and TPJ, Schurz et al. 2014;
     overlap with the default network: Spreng et al. 2009 · Faces: Kanwisher et al. 1997 · Emotional faces: Fusar-Poli et al. 2009 · Social feedback in the striatum: Izuma et al. 2008 ·
-    Error signals and adjusting: Ridderinkhof et al. 2004 · Words before speech: Flinker et al. 2015 · Creative thinking: Beaty et al. 2016 · Practice and feedback: Blanch-Hartigan et al. 2012</div>`,
+    Error signals and adjusting: Ridderinkhof et al. 2004 · Words before speech: Flinker et al. 2015 · Creative thinking: Beaty et al. 2016 · Practice and feedback: Blanch-Hartigan et al. 2012 ·
+    Brain: FreeSurfer fsaverage (Fischl et al. 1999) and the MNI152 2009c template (Fonov et al. 2011), via TemplateFlow</div>`,
 };
 function cardAt(t) {
   if (t < O) return ['intro', 1 - smooth((t - (O - 0.35)) / 0.35)];
@@ -462,12 +430,15 @@ window.renderFrame = (i) => {
 window.events = () => {
   const ev = { duration: END, pops: [], blips: [], buzz: [], chimes: [], whoosh: [{ t: FL }, { t: I }], room: [[O, FL], [I, OUT]] };
   for (const [, a] of SAY) ev.pops.push({ t: a });
-  for (const [, b, t0] of SIG) ev.blips.push({ t: t0, pitch: 1.6 - R[b].p[0] });
+  // higher toward the front of the brain
+  for (const [, b, t0] of SIG) ev.blips.push({ t: t0, pitch: 0.68 + 0.82 * (SPOTS[b].at[0][1] + 99) / 149 });
   for (const [r, t0] of ACT) { if (r === 'off') ev.buzz.push({ t: t0 }); if (r === 'reward') ev.chimes.push({ t: t0 }); }
   return ev;
 };
 window.__frames = Math.round(END * FPS); window.__fps = FPS;
+let brain3 = null;
 document.fonts.ready.then(async () => {
+  brain3 = await makeBrain(document.getElementById('brain'), W, H - BTOP);
   await Promise.all(['600 31px B', '700 30px B', '900 30px BC', '700 22px BC', '800 26px BC'].map(f => document.fonts.load(f)));
   window.renderFrame(0); window.__ready = true;
 });

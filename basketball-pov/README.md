@@ -33,8 +33,9 @@ It writes three files:
 
 ## v12: what it shows
 
-A 2D animated split screen. On top is what he does; underneath is what his brain does at the same moment. The brain
-is a see-through illustration of areas that tend to be involved, not a scan. Deep and midline areas are dashed.
+An animated split screen. On top is what he does; underneath is what his brain does at the same moment. The brain is a
+real one (built from open MRI-derived data) rendered like an anatomy app; the glows show areas that tend to be involved,
+not a scan. Areas on the inner wall or deep inside glow softly through the tissue.
 
 | Part | What he does | What his brain does |
 |---|---|---|
@@ -54,12 +55,13 @@ What the research does and doesn't support, and how the video follows it:
 
 ## How v12 is made
 
-- **Page:** a 2D canvas, no 3D.
+- **Page:** a 2D canvas over a three.js brain.
   - The people are drawn from keyframed poses: gaze, brows, eyelids, mouth, crossed arms, phone, gestures and laughing. Their arms reach with a two-bone solve.
   - Speech bubbles pop in.
-  - The brain is a spline outline with folds. Regions glow by activity, signals travel along curves between them, and networks are drawn as one while they work together.
+  - The brain (`src/brain12.js`) is FreeSurfer's fsaverage pial surface for the cortex, shaded by its sulcal depth (gyri light, sulci dark), plus a cerebellum and brainstem cut from the MNI152 2009c template (`tools/brain_mesh.py`: the template brain minus the cortex, as an isosurface of its T1). The shader adds wet-tissue gloss, the cerebellum's folia and a pale brainstem.
+  - Activity lights the tissue at each area's real place (MNI coordinates): tightly for areas on the outside, softer and wider for areas on the inner wall or deep inside. Labels, signals and networks are drawn in 2D at the areas' projected positions.
 - **Sound:** `tools/audio_room.py`: room tone, a group murmur, bubble pops, a short tone per brain signal, a buzz for "something's off" and a bell when something lands.
-- **Files:** `src/main12.js`, `src/hud12.css`, `src/index12.html`, `tools/audio_room.py`.
+- **Files:** `src/main12.js`, `src/brain12.js`, `src/hud12.css`, `src/index12.html`, `tools/audio_room.py`, `tools/brain_mesh.py`, `tools/fetch_brain.sh`.
 
 ## v11: what it shows
 
@@ -393,8 +395,8 @@ A right-wing isolation with the clock running out and your team down two.
 
 ```bash
 npm install
-pip install pillow numpy scipy imageio-ffmpeg trimesh networkx mediapipe
-npm run assets      # Rocketbox models + uniforms, CMU mocap clips
+pip install pillow numpy scipy imageio-ffmpeg trimesh networkx mediapipe nibabel scikit-image
+npm run assets      # Rocketbox models + uniforms, CMU mocap clips, the v12 brain
 npm run preview:v12 # quick 540x960 check of v12
 npm run render:v12  # final 1080x1920 v12 with audio -> out/read_the_room.mp4
 npm run preview:v11 # quick 540x960 check of v11
@@ -434,5 +436,6 @@ Useful dev tools:
 - CMU Graphics Lab Motion Capture Database (mocap.cs.cmu.edu), created with funding from NSF EIA-0196217
 - Microsoft Rocketbox Avatar Library (MIT) for the character models and textures (and v4's sneakers)
 - OpenSim full-body musculoskeletal model: Rajagopal, A., Dembia, C.L., DeMers, M.S., Delp, D.D., Hicks, J.L., Delp, S.L. (2016), "Full-body musculoskeletal model for muscle-driven simulation of human gait", IEEE TBME. Bone geometry from opensim-org/opensim-models, fetched at build time.
+- v12's brain: FreeSurfer's fsaverage surface (Fischl, Sereno, Tootell & Dale 1999, Hum Brain Mapp 8:272) and the MNI ICBM152 2009c nonlinear asymmetric template (Fonov et al. 2009, NeuroImage 47:S102; Fonov et al. 2011, NeuroImage 54:313; Copyright (C) 1993-2009 Louis Collins, McConnell Brain Imaging Centre, Montreal Neurological Institute, McGill University), both from TemplateFlow (Ciric et al. 2022, Nat Methods 19:1568), fetched at build time.
 - three.js (MIT)
 - Barlow, Barlow Condensed and Graduate fonts (SIL Open Font License, see `src/fonts/LICENSES-OFL.txt`)

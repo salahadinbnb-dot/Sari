@@ -9,6 +9,7 @@
 :root { --red: #ff4d5e; --green: #2fe377; --amber: #ffc23a; --cyan: #3ee6ff; --ink: rgba(6, 8, 14, 0.78); }
 html, body { margin: 0; padding: 0; background: #000; overflow: hidden; }
 #stage { position: relative; width: 1080px; height: 1920px; overflow: hidden; background: #070a12; }
+#brain { position: absolute; left: 0; top: 992px; width: 1080px; height: 928px; display: block; }
 #cv { position: absolute; inset: 0; width: 1080px; height: 1920px; display: block; }
 #hud { position: absolute; inset: 0; pointer-events: none; color: #fff; font-family: 'BC', sans-serif; }
 #hud > * { position: absolute; }
