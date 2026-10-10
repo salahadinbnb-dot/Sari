@@ -42,7 +42,7 @@ what he's running, one card per call.
 | 1 · Thinking it | Slow, and short. | Five steps, five separate calls, eyes on the ball. The hop back takes 0.50 s, so his man gets back (2.9 ft). |
 | 2 · Wiring it | Quicker, and it goes. | He fixes one thing a rep: the hop is 0.38 s. Rep 1 is a dashed ghost at the same moment, still a step behind. Two chunks now. |
 | 3 · Owning it | Full speed, wet. | One chunk, one call, so his eyes come up to his man's hips. A 0.31 s hop: gone before his man is back (4.3 ft). |
-| 4 · Making it his | Live: the step-back, a fake, and he rises. | His man has learned it too and runs at the step-back. Read: his weight's coming at you. So he flips it: he sells the step-back shot with a piece he already owns, the shot fake, lets him fly by, and rises. |
+| 4 · Making it his | Live: the step-back, a fake, and he rises. | His man has learned it too and steps right back in on the step-back. Read: his weight's coming at you. So he flips it: he sells the step-back shot with a piece he already owns, the shot fake, gets him off his feet, and rises as he comes down. |
 
 Between rep 3 and rep 6 he sleeps on it.
 
@@ -64,7 +64,7 @@ Sources:
 - **Motion:**
   - Every rep is CMU 06_13's between-the-legs, cross, cross back and hop back, then 124_05's pull-up. Rep 1 plays the dribble moves at 0.8 and the hop at 1.0, rep 3 at 0.9 and 1.3, rep 6 at 1.0 and 1.6.
   - The defender is 78_30's stance, a slide with the cross, and its slide back toward where you'll shoot.
-  - Live, you add 78_22's shot fake off the hop back. He closes out (78_25) and leaves his feet on the fake (124_05's jump), its carry aimed past your shoulder.
+  - Live, you add 78_22's shot fake off the hop back. He steps back in (78_25's last chop steps, aimed a stride off you) and leaves his feet on the fake (124_05's jump), coming down a stride in front of you as you rise.
 - **Files:** `src/play11.js`, `src/hud11.js`, `src/hud11.css`, `src/timeline11.js`, `src/main11.js`.
 
 ## v10: what it shows
