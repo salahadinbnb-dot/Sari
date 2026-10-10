@@ -1,0 +1,38 @@
+{
+  "name": "basketball-pov",
+  "version": "1.0.0",
+  "description": "2K-style and phone-style basketball clips (three.js, rendered headless to MP4) driven by real motion capture: v6 is a film-room clip on the approach and the dunk (rim touch, then a tomahawk), v5 reading a defender's weight (when to shoot, contact finishes), v4 anatomical skeletons in a practice gym, v3 a tweener-cross-cross step-back three from the side, v2 a behind-the-player 1v1 breakdown.",
+  "scripts": {
+    "render:v9": "node tools/events2.mjs src/index9.html out/events9.json && python3 tools/audio_gym.py out/events9.json out/audio9.wav && node tools/render.mjs --page src/index9.html --viewport 1080x1920 --size 1080x1920 --crf 23 --out out/lockdown_silent.mp4 --workers 3 && bash tools/mux.sh out/lockdown_silent.mp4 out/audio9.wav out/lockdown.mp4",
+    "preview:v9": "node tools/render.mjs --page src/index9.html --q 'half&sub=1' --viewport 1080x1920 --size 540x960 --step 2 --workers 3 --out out/preview_v9.mp4",
+    "render:v12": "node tools/events2.mjs src/index12.html out/events12.json && python3 tools/audio_room.py out/events12.json out/audio12.wav && node tools/render.mjs --page src/index12.html --viewport 1080x1920 --size 1080x1920 --crf 23 --out out/read_the_room_silent.mp4 --workers 3 && bash tools/mux.sh out/read_the_room_silent.mp4 out/audio12.wav out/read_the_room.mp4",
+    "preview:v12": "node tools/render.mjs --page src/index12.html --viewport 1080x1920 --size 540x960 --step 2 --workers 3 --out out/preview_v12.mp4",
+    "render:v11": "node tools/events2.mjs src/index11.html out/events11.json && python3 tools/audio_gym.py out/events11.json out/audio11.wav && node tools/render.mjs --page src/index11.html --viewport 1080x1920 --size 1080x1920 --crf 23 --out out/behind_the_curtain_silent.mp4 --workers 3 && bash tools/mux.sh out/behind_the_curtain_silent.mp4 out/audio11.wav out/behind_the_curtain.mp4",
+    "preview:v11": "node tools/render.mjs --page src/index11.html --q 'half&sub=1' --viewport 1080x1920 --size 540x960 --step 2 --workers 3 --out out/preview_v11.mp4",
+    "render:v10": "node tools/events2.mjs src/index10.html out/events10.json && python3 tools/audio_gym.py out/events10.json out/audio10.wav && node tools/render.mjs --page src/index10.html --viewport 1080x1920 --size 1080x1920 --crf 23 --out out/shoot_over_him_silent.mp4 --workers 3 && bash tools/mux.sh out/shoot_over_him_silent.mp4 out/audio10.wav out/shoot_over_him.mp4",
+    "preview:v10": "node tools/render.mjs --page src/index10.html --q 'half&sub=1' --viewport 1080x1920 --size 540x960 --step 2 --workers 3 --out out/preview_v10.mp4",
+    "render:v8": "node tools/events2.mjs src/index8.html out/events8.json && python3 tools/audio_gym.py out/events8.json out/audio8.wav && node tools/render.mjs --page src/index8.html --viewport 1080x1920 --size 1080x1920 --crf 23 --out out/make_him_move_silent.mp4 --workers 3 && bash tools/mux.sh out/make_him_move_silent.mp4 out/audio8.wav out/make_him_move.mp4",
+    "preview:v8": "node tools/render.mjs --page src/index8.html --q 'half&sub=1' --viewport 1080x1920 --size 540x960 --step 2 --workers 3 --out out/preview_v8.mp4",
+    "render:v7": "node tools/events2.mjs src/index7.html out/events7.json && python3 tools/audio_gym.py out/events7.json out/audio7.wav && node tools/render.mjs --page src/index7.html --viewport 1080x1920 --size 1080x1920 --crf 23 --out out/hands_on_it_silent.mp4 --workers 3 && bash tools/mux.sh out/hands_on_it_silent.mp4 out/audio7.wav out/hands_on_it.mp4",
+    "preview:v7": "node tools/render.mjs --page src/index7.html --q 'half&sub=1' --viewport 1080x1920 --size 540x960 --step 2 --workers 3 --out out/preview_v7.mp4",
+    "render:v6": "node tools/events2.mjs src/index6.html out/events6.json && python3 tools/audio_dunk.py out/events6.json out/audio6.wav && node tools/render.mjs --page src/index6.html --viewport 1080x1920 --size 1080x1920 --crf 23 --out out/get_up_silent.mp4 --workers 3 && bash tools/mux.sh out/get_up_silent.mp4 out/audio6.wav out/get_up.mp4",
+    "preview:v6": "node tools/render.mjs --page src/index6.html --q 'half&sub=1' --viewport 1080x1920 --size 540x960 --step 2 --workers 3 --out out/preview_v6.mp4",
+    "assets": "bash tools/fetch_assets.sh",
+    "render:v5": "node tools/events2.mjs src/index5.html out/events5.json && python3 tools/audio_gym.py out/events5.json out/audio5.wav && node tools/render.mjs --page src/index5.html --viewport 1080x1920 --size 1080x1920 --crf 23 --out out/read_his_weight_silent.mp4 --workers 3 && bash tools/mux.sh out/read_his_weight_silent.mp4 out/audio5.wav out/read_his_weight.mp4",
+    "preview:v5": "node tools/render.mjs --page src/index5.html --q 'half&sub=1' --viewport 1080x1920 --size 540x960 --step 2 --workers 3 --out out/preview_v5.mp4",
+    "render:v4": "node tools/events2.mjs src/index4.html out/events4.json && python3 tools/audio_gym.py out/events4.json out/audio4.wav && node tools/render.mjs --page src/index4.html --viewport 1080x1920 --size 1080x1920 --crf 23 --out out/skeleton_gym_silent.mp4 --workers 3 && bash tools/mux.sh out/skeleton_gym_silent.mp4 out/audio4.wav out/skeleton_gym.mp4",
+    "preview:v4": "node tools/render.mjs --page src/index4.html --q 'half&sub=2' --viewport 1080x1920 --size 540x960 --step 2 --workers 3 --out out/preview_v4.mp4",
+    "render:v3": "node tools/events2.mjs src/index3.html out/events3.json && python3 tools/audio.py out/events3.json out/audio3.wav && node tools/render.mjs --page src/index3.html --out out/tweener_silent.mp4 --workers 3 && bash tools/mux.sh out/tweener_silent.mp4 out/audio3.wav out/tweener.mp4",
+    "preview:v3": "node tools/render.mjs --page src/index3.html --out out/preview_v3.mp4 --q half --workers 3 --size 960x540 --step 2",
+    "render:v3:skel": "node tools/events2.mjs src/index3.html out/events3.json && python3 tools/audio.py out/events3.json out/audio3.wav && node tools/render.mjs --page src/index3.html --q skel --out out/tweener_skeleton_silent.mp4 --workers 3 && bash tools/mux.sh out/tweener_skeleton_silent.mp4 out/audio3.wav out/tweener_skeleton.mp4",
+    "render": "node tools/events2.mjs && python3 tools/audio.py out/events2.json out/audio2.wav && node tools/render.mjs --page src/index2.html --out out/1v1_pov_silent.mp4 --workers 3 && bash tools/mux.sh out/1v1_pov_silent.mp4 out/audio2.wav out/1v1_pov.mp4",
+    "preview": "node tools/render.mjs --page src/index2.html --out out/preview_v2.mp4 --q half --workers 3 --size 960x540 --step 2",
+    "render:v1": "node tools/events.mjs && python3 tools/audio.py && node tools/render.mjs --out out/ball_screen_pov_silent.mp4 --workers 3 && bash tools/mux.sh"
+  },
+  "license": "ISC",
+  "dependencies": {
+    "three": "^0.186.1"
+  },
+  "type": "module",
+  "private": true
+}
