@@ -70,14 +70,14 @@ mix = np.zeros((2, N))
 # room tone everywhere; the group's murmur while we're in the room
 t_all = np.arange(N) / SR
 air = lp(rng.standard_normal(N), 400); air /= np.sqrt(np.mean(air ** 2)) + 1e-9
-mix += air * db(-46)
+mix += air * db(-55)
 mur = bp(rng.standard_normal(N), 220, 950)
 syl = lp(np.abs(rng.standard_normal(N)), 5.0); syl /= syl.max() + 1e-9
 mur *= 0.35 + 0.65 * syl; mur /= np.sqrt(np.mean(mur ** 2)) + 1e-9
 inroom = np.zeros(N)
 for a, b in ev.get('room', []):
     inroom += np.clip((t_all - a) / 0.4, 0, 1) * np.clip((b - t_all) / 0.4, 0, 1)
-mix[0] += mur * inroom * db(-36); mix[1] += np.roll(mur, 911) * inroom * db(-36)
+mix[0] += mur * inroom * db(-47); mix[1] += np.roll(mur, 911) * inroom * db(-47)
 
 for p in ev['pops']: place(mix, verb(pop(), 0.2), p['t'], db(-20), pan=rng.uniform(-0.3, 0.3))
 for b in ev['blips']: place(mix, verb(blip(b['pitch']), 0.35), b['t'], db(-27), pan=0.3 * (b['pitch'] - 1.1))

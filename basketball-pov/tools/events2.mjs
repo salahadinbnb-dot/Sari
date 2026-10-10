@@ -9,4 +9,4 @@ const { browser, page } = await openPage(server, PAGE, 'half');
 const ev = await page.evaluate(() => window.events());
 await browser.close(); server.close();
 fs.writeFileSync(OUT, JSON.stringify(ev, null, 1));
-console.log(JSON.stringify({ duration: ev.duration, bounces: ev.bounces.length, freezes: ev.freezes.map(f => f.tag) }));
+console.log(JSON.stringify({ duration: ev.duration, bounces: ev.bounces?.length, freezes: ev.freezes?.map(f => f.tag) }));
