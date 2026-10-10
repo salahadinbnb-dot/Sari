@@ -3,7 +3,8 @@
 2K-style gameplay clips and breakdowns, rendered from three.js and driven by real motion capture.
 
 - **Compilation:** every video below, v1 to v10, back to back in one portrait clip. [`out/compilation.mp4`](out/compilation.mp4) (5:27, 720×1280, 30 fps, H.264 + AAC; the landscape v1-v3 sit over a blurred fill)
-- **v10 (latest): film room, "Shoot Over Him".** An iso pull-up into a good contest, in three beats: gather the ball into both hands, set your feet with a 1-2, then rise straight up and release over his hand. Then the same iso pulled up without stopping, drifting into him. [`out/shoot_over_him.mp4`](out/shoot_over_him.mp4) (1080×1920 portrait, 30 fps, H.264 + AAC)
+- **v11 (latest): film room, "Behind the Curtain".** A sharp player learns a new move (between the legs, cross, cross back, step-back) at rep 1, rep 3 and rep 6, then makes it his own live. Every rep plays as it looks in the gym, then the picture splits like a curtain onto what he's running behind it: his eyes, the steps fusing into chunks, his man's weight, his options. [`out/behind_the_curtain.mp4`](out/behind_the_curtain.mp4) (1080×1920 portrait, 30 fps, H.264 + AAC)
+- v10: film room, "Shoot Over Him". An iso pull-up into a good contest, in three beats: gather the ball into both hands, set your feet with a 1-2, then rise straight up and release over his hand. Then the same iso pulled up without stopping, drifting into him. [`out/shoot_over_him.mp4`](out/shoot_over_him.mp4) (1080×1920 portrait, 30 fps, H.264 + AAC)
 - v9: film room, "Lockdown". You're the defender this time: staying down on the fake, mirroring a good ball handler's cross, and helping and recovering as a team, each ending in a contested miss. [`out/lockdown.mp4`](out/lockdown.mp4) (1080×1920 portrait, 30 fps, H.264 + AAC)
 - v8: film room, "Make Him Move". How a shooter who isn't fast or strong beats a quicker defender: head fake, shoulder fake, hesi pull-up, step-back, each into a pull-up over him, with the skeletons in the gym. [`out/make_him_move.mp4`](out/make_him_move.mp4) (1080×1920 portrait, 30 fps, H.264 + AAC)
 - v7: film room, "Get Your Hands On It". Steals against a good dribbler, when he's beaten you, and off the ball, with the skeletons in the gym. [`out/hands_on_it.mp4`](out/hands_on_it.mp4) (1080×1920 portrait, 30 fps, H.264 + AAC)
@@ -28,6 +29,43 @@ It writes three files:
 - `clip_overlay.mp4`: the footage with the tracked skeleton drawn on it.
 - `clip_pose.mp4`: the skeleton alone on black, the pose-reference format that AI video tools take.
 - `clip.json`: per-frame 2D image landmarks with visibility, plus 3D world landmarks in metres around the hips.
+
+## v11: what it shows
+
+How a fast learner picks up a move, without showing a brain: each rep plays as you'd see it in the gym (real life),
+then the picture splits down the middle and slides apart onto the same rep, dark and slowed down (behind the curtain).
+Drawn over it: both players as lines, the ball, a beam from his eyes to what he's watching, and along the bottom
+what he's running, one card per call.
+
+| Rep | Real life | Behind the curtain |
+|---|---|---|
+| 1 · Thinking it | Slow, and short. | Five steps, five separate calls, eyes on the ball. The hop back takes 0.50 s, so his man gets back (2.9 ft). |
+| 2 · Wiring it | Quicker, and it goes. | He fixes one thing a rep: the hop is 0.38 s. Rep 1 is a dashed ghost at the same moment, still a step behind. Two chunks now. |
+| 3 · Owning it | Full speed, wet. | One chunk, one call, so his eyes come up to his man's hips. A 0.31 s hop: gone before his man is back (4.3 ft). |
+| 4 · Making it his | Live: the step-back, a fake, and he rises. | His man has learned it too and runs at the step-back. Read: his weight's coming at you. So he flips it: he sells the step-back shot with a piece he already owns, the shot fake, lets him fly by, and rises. |
+
+Between rep 3 and rep 6 he sleeps on it.
+
+The same defender plays every practice rep on the same clock from your cross: he slides with it, then comes back at
+you. The only thing that changes is how quick your hop is, and that alone decides how much of the way back he gets.
+
+Sources:
+
+- **Stages of learning:** Fitts & Posner 1967, *Human Performance*: cognitive, associative, autonomous. That's thinking it, wiring it and owning it.
+- **Chunking:** Sakai, Kitaguchi & Hikosaka 2003 (Exp Brain Res 152:229-242). With practice, people ran a 10-part sequence as a few clusters, and each cluster behaved as one unit, a chunk.
+- **Sleep:** Walker et al. 2002 (Neuron 35:205-211). A practiced finger sequence was about 20% faster after a night's sleep, with no loss of accuracy and no extra practice. Pan & Rickard 2015 (Psychol Bull 141:812-834) found little or no gain once methods are accounted for, though sleep may help it stick, so the card says so.
+
+## How v11 is made
+
+- **Engine:** the v5-v10 page and rep engine. On top of it:
+  - The present shader splits the picture for the curtain and grades the behind view dark.
+  - A 2D overlay draws the players' joints as lines (projected from the rig), the ball, the eyes beam (pinned to the frame edge with an arrowhead when the rim is out of it), the rep 1 ghost, his man's weight and the options.
+  - The HUD strip shows the move's parts as cards, grouped into chunks per rep. A chunk lights all at once.
+- **Motion:**
+  - Every rep is CMU 06_13's between-the-legs, cross, cross back and hop back, then 124_05's pull-up. Rep 1 plays the dribble moves at 0.8 and the hop at 1.0, rep 3 at 0.9 and 1.3, rep 6 at 1.0 and 1.6.
+  - The defender is 78_30's stance, a slide with the cross, and its slide back toward where you'll shoot.
+  - Live, you add 78_22's shot fake off the hop back. He closes out (78_25) and leaves his feet on the fake (124_05's jump), its carry aimed past your shoulder.
+- **Files:** `src/play11.js`, `src/hud11.js`, `src/hud11.css`, `src/timeline11.js`, `src/main11.js`.
 
 ## v10: what it shows
 
@@ -326,6 +364,8 @@ A right-wing isolation with the clock running out and your team down two.
 npm install
 pip install pillow numpy scipy imageio-ffmpeg trimesh networkx mediapipe
 npm run assets      # Rocketbox models + uniforms, CMU mocap clips
+npm run preview:v11 # quick 540x960 check of v11
+npm run render:v11  # final 1080x1920 v11 with audio -> out/behind_the_curtain.mp4
 npm run preview:v10 # quick 540x960 check of v10
 npm run render:v10  # final 1080x1920 v10 with audio -> out/shoot_over_him.mp4
 npm run preview:v9  # quick 540x960 check of v9

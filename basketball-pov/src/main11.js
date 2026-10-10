@@ -24,7 +24,7 @@ const SPECS = { you: { model: '04', tex: 'you', height: 2.125 }, d1: { model: '0
 const CARDS = {
   intro: INTRO,
   night: `<div class="moon"></div><div class="k">THAT NIGHT</div><div class="h" style="font-size:120px">HE SLEEPS<br>ON IT</div>
-    <div class="p">In one classic study, people tapped a practiced<br>sequence <b>about 20% faster</b> after a night's sleep,<br>with no more practice. Later reviews find less<br>than that, but sleep helps it stick.</div>
+    <div class="p">In one classic study, people tapped a practiced<br>sequence <b>about 20% faster</b> after a night's sleep,<br>with no more practice. Later reviews find less<br>than that: sleep may mostly help it stick.</div>
     <div class="cite">Walker et al. 2002, Neuron 35:205 · Pan & Rickard 2015, Psychol Bull 141:812</div>`,
   outro: `<div class="big">Slow it down<br>to <em>learn</em> it.</div><div class="big" style="margin-top:34px">Fix <em>one thing</em><br>a rep.</div><div class="big" style="margin-top:34px">Eyes off<br>the <em>ball.</em></div><div class="big" style="margin-top:34px">Then <em>mix</em><br>the pieces.</div>
     <div class="src">Stages of learning (cognitive, associative, autonomous): Fitts & Posner 1967, Human Performance · Steps fusing into chunks with practice: Sakai, Kitaguchi<br>& Hikosaka 2003, Exp Brain Res 152:229 · Sleep: Walker et al. 2002, Neuron 35:205; Pan & Rickard 2015, Psychol Bull 141:812 · Motion: CMU Graphics Lab Motion Capture Database</div>`,
