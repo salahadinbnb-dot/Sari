@@ -13,7 +13,7 @@ const TOP = 936, BR = { x: 140, y: 1072, w: 800, h: 560 };
 
 // ---------------------------------------------------------------- the story, in seconds of video
 const O = 3.8, FL = 17.0, I = 18.4, F = 33.0, END = 46.0, OUT = 41.5;
-const PARTS = [[O, FL, 'out', '1 · CHECKED OUT'], [I, F, 'in', '2 · LOCKED IN'], [F, OUT, 'fast', '3 · FASTER EVERY TIME']];
+const PARTS = [[O, FL, 'out', '1 · CHECKED OUT'], [I, F, 'in', '2 · LOCKED IN'], [F, OUT, 'fast', '3 · WHY HE DEVELOPS FASTER']];
 
 // people: keyframes [t, props]; numbers ease between keyframes, anything missing carries over
 const LOOK = {
@@ -68,7 +68,7 @@ key('him', I + 12.0, { gesture: 1 }); key('him', I + 12.4, { gesture: 0, laugh: 
 key('A', I + 11.6, { laugh: 0 }); key('A', I + 12.0, { laugh: 1, smile: 0.8 }); key('B', I + 11.8, { laugh: 1, smile: 0.8 }); key('C', I + 11.8, { laugh: 1, smile: 0.8 });
 key('A', I + 13.4, { laugh: 0, smile: 0.5 }); key('B', I + 13.4, { laugh: 0, smile: 0.5 }); key('C', I + 13.4, { laugh: 0, smile: 0.55 }); key('him', I + 13.4, { laugh: 0, smile: 0.5 });
 // 3 - quicker every time: the same cue (she gets talked over), three times, each catch quicker
-const REPS = [{ t: F + 0.6, d: 2.0, n: '1ST TIME' }, { t: F + 3.4, d: 1.0, n: '10TH TIME' }, { t: F + 5.6, d: 0.5, n: '50TH TIME' }];
+const REPS = [{ t: F + 0.5, d: 1.5, n: 'LOOP 1' }, { t: F + 3.0, d: 1.5, n: 'LOOP 10' }, { t: F + 5.5, d: 1.5, n: 'LOOP 50' }];
 room(F);
 key('him', F, { x: 215, face: 1, phone: 0, down: 0, gx: 0.8, smile: 0.3, gesture: 0, open: 0, laugh: 0, brow: 0 });
 key('B', F, { phone: 0, down: 0, gy: 0, lid: 0, laugh: 0 }); key('C', F, { laugh: 0, gesture: 0, cross: 0 }); key('A', F, { laugh: 0 });
@@ -118,42 +118,47 @@ const OUTLINE = [[0.02, 0.48], [0.05, 0.3], [0.13, 0.15], [0.27, 0.05], [0.45, 0
   [0.93, 0.72], [0.92, 0.84], [0.84, 0.9], [0.72, 0.88], [0.66, 0.82], [0.62, 0.86], [0.6, 0.99], [0.54, 0.99], [0.53, 0.84], [0.45, 0.8], [0.33, 0.78], [0.25, 0.72], [0.24, 0.64], [0.18, 0.66], [0.09, 0.62], [0.04, 0.56]];
 const R = {
   see: { p: [0.92, 0.48], label: 'SEEING', col: '62,230,255', lx: 1, ly: -1 },
-  face: { p: [0.66, 0.76], label: 'FACES', col: '62,230,255', lx: 1, ly: 1 },
+  face: { p: [0.66, 0.76], label: 'FACES', col: '62,230,255', deep: true, lx: 1, ly: 1 },
   emo: { p: [0.33, 0.66], label: 'EMOTION', col: '255,107,94', deep: true, lx: -1, ly: 1 },
   tpj: { p: [0.7, 0.4], label: 'WHAT ARE THEY THINKING?', col: '190,150,255', lx: 1, ly: -1 },
   mind: { p: [0.1, 0.42], label: 'READING MINDS', col: '190,150,255', deep: true, lx: -1, ly: -1 },
   plan: { p: [0.22, 0.25], label: 'PLANNING', col: '230,240,255', lx: -1, ly: -1 },
-  speech: { p: [0.25, 0.53], label: 'SPEECH', col: '230,240,255', lx: -1, ly: 1 },
+  speech: { p: [0.25, 0.53], label: 'PUTTING IT INTO WORDS', col: '230,240,255', lx: -1, ly: 1 },
   off: { p: [0.36, 0.32], label: 'SOMETHING\'S OFF', col: '255,77,94', deep: true, lx: 1, ly: -1 },
-  auto: { p: [0.45, 0.45], label: 'AUTOPILOT (HABIT)', col: '255,150,80', deep: true, lx: 1, ly: 1 },
-  reward: { p: [0.37, 0.52], label: 'THAT LANDED (REWARD)', col: '255,194,58', deep: true, lx: 1, ly: 1 },
+  reward: { p: [0.37, 0.52], label: 'IT LANDED (FEEDBACK)', col: '255,194,58', deep: true, lx: 1, ly: 1 },
   mem: { p: [0.5, 0.65], label: 'MEMORY', col: '120,220,170', deep: true, lx: 1, ly: -1 },
-  dmn: { p: [0.66, 0.24], label: 'MIND ELSEWHERE', col: '150,160,190', deep: true, lx: 1, ly: -1 },
+  dmn: { p: [0.62, 0.22], label: 'INNER NETWORK', col: '190,150,255', deep: true, lx: 1, ly: -1 },
 };
 const bp = (n) => ({ x: BR.x + R[n].p[0] * BR.w, y: BR.y + R[n].p[1] * BR.h });
 // activity: [region, t0, t1, level]
 const ACT = [
-  ['dmn', O + 0.3, O + 3.2, 1], ['see', O + 0.3, O + 9.0, 0.25],
-  ['auto', O + 3.1, O + 8.8, 1], ['speech', O + 3.2, O + 8.8, 1],
-  ['face', O + 6.1, O + 6.7, 0.35], ['off', O + 6.5, O + 7.3, 1],
-  ['dmn', O + 9.6, FL + 0.3, 1],
+  // checked out: the inner hubs busy with his own stuff; what comes in from outside barely registers
+  ['dmn', O + 0.3, O + 9.0, 1, 'HIS OWN STUFF'], ['mind', O + 0.3, O + 9.0, 0.8, ''], ['tpj', O + 0.3, O + 9.0, 0.8, ''], ['see', O + 0.3, O + 9.0, 0.2],
+  ['speech', O + 3.2, O + 8.8, 1],
+  ['face', O + 6.1, O + 6.7, 0.25, 'FACES (FAINT)'], ['off', O + 6.5, O + 7.3, 0.4, 'SOMETHING\'S OFF (WEAK)'],
+  ['dmn', O + 9.6, FL + 0.3, 1, 'HIS OWN STUFF'], ['mind', O + 9.6, FL + 0.3, 0.8, ''], ['tpj', O + 9.6, FL + 0.3, 0.8, ''],
+  // locked in: the same hubs, pointed at them
   ['see', I + 0.3, I + 14.4, 0.8], ['face', I + 0.8, I + 2.5, 0.75], ['emo', I + 1.8, I + 2.6, 0.55],
   ['face', I + 3.0, I + 3.8, 1], ['emo', I + 3.2, I + 4.2, 1], ['tpj', I + 3.6, I + 5.2, 1], ['mind', I + 4.0, I + 5.4, 1],
   ['plan', I + 4.5, I + 5.6, 1], ['speech', I + 5.0, I + 6.7, 1],
   ['face', I + 7.0, I + 7.6, 0.9], ['reward', I + 7.2, I + 9.0, 1],
-  ['face', I + 8.8, I + 9.4, 0.8], ['tpj', I + 9.0, I + 9.8, 0.8], ['mem', I + 9.3, I + 10.6, 1], ['plan', I + 9.9, I + 10.5, 1], ['speech', I + 10.2, I + 12.1, 1],
-  ['reward', I + 11.9, I + 13.8, 1],
+  // the creative link: memory, and the inner hubs working with planning
+  ['face', I + 8.8, I + 9.4, 0.8], ['mem', I + 9.3, I + 10.6, 1], ['dmn', I + 9.3, I + 10.6, 1, ''], ['mind', I + 9.3, I + 10.6, 0.9, ''], ['tpj', I + 9.3, I + 10.6, 0.9, ''], ['plan', I + 9.5, I + 10.6, 1],
+  ['speech', I + 10.2, I + 12.1, 1], ['reward', I + 11.9, I + 13.8, 1],
   ['see', F + 0.2, OUT, 0.8],
   ...REPS.flatMap(r => { const s = r.d / 2.0; return [['face', r.t + 0.1, r.t + 0.1 + 0.5 * s, 1], ['emo', r.t + 0.1 + 0.15 * s, r.t + 0.1 + 0.6 * s, 0.8], ['tpj', r.t + 0.1 + 0.3 * s, r.t + 0.1 + 0.95 * s, 1], ['mind', r.t + 0.1 + 0.55 * s, r.t + 0.1 + 1.25 * s, 1], ['plan', r.t + 0.1 + 0.8 * s, r.t + r.d, 1], ['speech', r.t + r.d - 0.05, r.t + r.d + 0.6, 1], ['reward', r.t + r.d + 0.35, r.t + r.d + 1.0, 0.9]]; }),
 ];
+// networks drawn as one: [t0, t1, regions, colour, label]
+const NET = [[O + 0.3, O + 9.0, ['dmn', 'mind', 'tpj'], '190,150,255', null], [O + 9.6, FL + 0.3, ['dmn', 'mind', 'tpj'], '190,150,255', null],
+  [I + 9.3, I + 10.6, ['dmn', 'mind', 'tpj', 'plan'], '255,194,58', 'INNER NETWORK + PLANNING, TOGETHER']];
 // signals: [from, to, t0, dur, die (fraction where it fizzles, or 1)]
 const SIG = [
-  ['auto', 'speech', O + 3.15, 0.45, 1], ['auto', 'speech', O + 4.4, 0.45, 1], ['auto', 'speech', O + 6.0, 0.45, 1], ['auto', 'speech', O + 7.6, 0.45, 1],
-  ['see', 'face', O + 5.9, 0.35, 1], ['face', 'off', O + 6.25, 0.4, 1], ['off', 'plan', O + 6.8, 0.7, 0.4],
+  ['mind', 'speech', O + 3.15, 0.45, 1], ['mind', 'speech', O + 4.4, 0.45, 1], ['mind', 'speech', O + 6.0, 0.45, 1], ['mind', 'speech', O + 7.6, 0.45, 1],
+  ['see', 'face', O + 5.9, 0.35, 0.6], ['face', 'off', O + 6.25, 0.4, 0.8], ['off', 'plan', O + 6.8, 0.7, 0.4],
   ['see', 'face', I + 0.75, 0.3, 1], ['see', 'face', I + 1.25, 0.3, 1], ['see', 'face', I + 1.75, 0.3, 1], ['face', 'emo', I + 1.95, 0.35, 1],
   ['see', 'face', I + 2.9, 0.3, 1], ['face', 'emo', I + 3.15, 0.35, 1], ['emo', 'tpj', I + 3.45, 0.4, 1], ['tpj', 'mind', I + 3.85, 0.45, 1], ['mind', 'plan', I + 4.35, 0.35, 1], ['plan', 'speech', I + 4.75, 0.3, 1],
   ['see', 'face', I + 6.9, 0.3, 1], ['face', 'reward', I + 7.15, 0.4, 1],
-  ['see', 'face', I + 8.75, 0.3, 1], ['face', 'tpj', I + 9.0, 0.35, 1], ['tpj', 'mem', I + 9.3, 0.35, 1], ['mem', 'plan', I + 9.75, 0.3, 1], ['plan', 'speech', I + 10.0, 0.25, 1],
+  ['see', 'face', I + 8.75, 0.3, 1], ['face', 'tpj', I + 9.0, 0.35, 1], ['tpj', 'mem', I + 9.3, 0.35, 1], ['mem', 'dmn', I + 9.5, 0.3, 1], ['dmn', 'plan', I + 9.75, 0.35, 1], ['plan', 'speech', I + 10.05, 0.25, 1],
   ['see', 'face', I + 11.7, 0.3, 1], ['face', 'reward', I + 11.95, 0.35, 1],
   ...REPS.flatMap(r => { const s = r.d / 2.0, c = ['see', 'face', 'emo', 'tpj', 'mind', 'plan', 'speech'], out = []; for (let i = 0; i < c.length - 1; i++) out.push([c[i], c[i + 1], r.t + 0.05 + i * (r.d - 0.1) / (c.length - 1), (r.d - 0.1) / (c.length - 1), 1]); return out; }),
 ];
@@ -162,21 +167,21 @@ const LINK = { t0: I + 9.4, t1: I + 12.4, a: 'HER STORY: THE PLACE WAS CLOSED', 
 // the loop clock
 const LOOP = [
   { t0: O + 7.4, t1: FL, text: 'NOTICE → READ → ADJUST', val: 'NEVER CLOSED', col: '255,77,94' },
-  { t0: I + 3.0, t1: I + 9.0, text: 'NOTICE → READ → ADJUST', run: [I + 3.0, I + 5.0], col: '62,230,255' },
-  { t0: I + 9.0, t1: F, text: 'LOOP 2: NOTICE → ADJUST', run: [I + 8.8, I + 10.0], col: '62,230,255', prev: '(LOOP 1: 2.0 s)' },
-  ...REPS.map((r, i) => ({ t0: r.t, t1: i < 2 ? REPS[i + 1].t - 0.3 : OUT, text: r.n, run: [r.t, r.t + r.d], col: '255,194,58' })),
+  { t0: I + 3.0, t1: I + 9.0, text: 'LOOP 1: NOTICE → READ → ADJUST', run: [I + 3.0, I + 5.0], col: '62,230,255' },
+  { t0: I + 9.0, t1: F, text: 'LOOP 2: NOTICE → READ → ADJUST', run: [I + 8.8, I + 10.2], col: '62,230,255' },
+  ...REPS.map((r, i) => ({ t0: r.t, t1: i < 2 ? REPS[i + 1].t - 0.3 : OUT, text: 'LOOPS CLOSED', val: ['1', '10', '50'][i], col: '255,194,58', prev: 'CHECKED OUT: 0' })),
 ];
 const CAPS = [
-  [O + 0.4, O + 4.4, 'Checked out. He\'s in the room,<br>but <b>his mind is somewhere else.</b>'],
-  [O + 4.6, O + 8.6, 'He talks on <s>autopilot</s>: habit straight<br>to speech. Nothing is reading the room.'],
-  [O + 8.8, O + 12.6, 'His brain flags it, <s>something\'s off</s>,<br>and he lets it go. <b>No update.</b>'],
+  [O + 0.4, O + 4.4, 'Checked out: his mind is on his own stuff.<br>Minds wander in <b>about half</b> of random<br>check-ins, <b>at least 30%</b> even mid-conversation.'],
+  [O + 4.6, O + 8.6, 'Faces barely register. His thinking hubs<br>are busy with <s>his own story</s>,<br>so that\'s what comes out.'],
+  [O + 8.8, O + 12.6, 'It goes wrong, and the <s>something\'s off</s><br>signal is weak. <b>He doesn\'t adjust.</b>'],
   [O + 12.8, FL - 0.1, 'The loop never closes,<br>so there\'s <b>nothing to learn from.</b>'],
-  [I + 0.3, I + 3.4, 'Locked in. He reads the faces<br><b>before he says a word.</b>'],
-  [I + 3.6, I + 6.6, 'Face → feeling → <em>what she\'s thinking</em>:<br><b>she had something to say.</b>'],
-  [I + 6.8, I + 9.6, 'It lands. <b>That</b> is the feedback<br>his brain learns from.'],
-  [I + 9.8, I + 12.8, 'Creative: he links two things he already<br>knew into <b>a move nobody else saw.</b>'],
-  [I + 12.9, F - 0.1, 'Second loop: <b>quicker.</b><br>That\'s catching on.'],
-  [F + 0.3, OUT - 0.1, 'Every loop that closes makes the next one<br>quicker, <b>until it runs on its own</b><br>and his attention is free to create.'],
+  [I + 0.3, I + 3.4, 'Locked in. He takes in the faces<br><b>before he says a word.</b>'],
+  [I + 3.6, I + 6.6, 'Face → feeling → <em>what she\'s thinking</em>.<br>The same hubs, <b>pointed at her</b>:<br>she had something to say.'],
+  [I + 6.8, I + 9.6, 'It lands: <b>feedback</b> his brain<br>can learn from.'],
+  [I + 9.8, I + 12.8, 'Creative: he links two things he already<br>knew. Creative thinking runs on that inner<br>network <b>working with planning.</b>'],
+  [I + 12.9, F - 0.1, 'Two loops closed.<br><b>Every loop that closes is a lesson.</b>'],
+  [F + 0.3, OUT - 0.1, 'Practice with feedback makes people<br><b>more accurate</b> at reading others. He closes<br>loop after loop. Checked out: <s>none</s>.'],
 ];
 
 // ---------------------------------------------------------------- drawing: the room
@@ -332,7 +337,7 @@ function brainBg(t) {
   for (let k = 0; k < 5; k++) { spline([[0.68, 0.74 + k * 0.03], [0.78, 0.71 + k * 0.035], [0.9, 0.75 + k * 0.02]].map(toB), false); g.stroke(); } // cerebellum
   g.restore();
 }
-function act(n, t) { let a = 0; for (const [r, t0, t1, l] of ACT) if (r === n) a = Math.max(a, l * env(t, t0, t1, 0.18)); return a; }
+function act(n, t) { let a = 0, lab; for (const [r, t0, t1, l, L] of ACT) if (r === n) { const v = l * env(t, t0, t1, 0.18); if (v > a) { a = v; lab = L; } } return { a, lab }; }
 function sigPath(a, b) { const A = bp(a), B = bp(b), mx = (A.x + B.x) / 2, my = (A.y + B.y) / 2, dx = B.x - A.x, dy = B.y - A.y, L = Math.hypot(dx, dy) || 1; return { A, B, C: { x: mx - dy / L * L * 0.18, y: my + dx / L * L * 0.18 } }; }
 const qb = (P, u) => ({ x: (1 - u) * (1 - u) * P.A.x + 2 * (1 - u) * u * P.C.x + u * u * P.B.x, y: (1 - u) * (1 - u) * P.A.y + 2 * (1 - u) * u * P.C.y + u * u * P.B.y });
 function brain(t) {
@@ -346,15 +351,23 @@ function brain(t) {
     g.restore();
   }
   // regions
+  // networks: their hubs joined while they work together
+  for (const [t0, t1, ns, col, label] of NET) {
+    const k = env(t, t0, t1, 0.3); if (k <= 0) continue;
+    g.save(); g.strokeStyle = `rgba(${col},${0.55 * k})`; g.lineWidth = 4; g.setLineDash([3, 9]); g.shadowColor = `rgba(${col},${k})`; g.shadowBlur = 12;
+    for (let i = 0; i < ns.length; i++) for (let j = i + 1; j < ns.length; j++) { const A = bp(ns[i]), B = bp(ns[j]); g.beginPath(); g.moveTo(A.x, A.y); g.lineTo(B.x, B.y); g.stroke(); }
+    g.restore();
+    if (label) { const c = ns.map(bp).reduce((m, p) => ({ x: m.x + p.x / ns.length, y: m.y + p.y / ns.length }), { x: 0, y: 0 }); chip(c.x, BR.y + 36, label, col, '#1a1200', 24, 'center', k); }
+  }
   for (const [n, r] of Object.entries(R)) {
-    const a = act(n, t), { x, y } = bp(n), rad = 26 + 26 * a;
+    const { a, lab } = act(n, t), { x, y } = bp(n), rad = 26 + 26 * a;
     const gr = g.createRadialGradient(x, y, 0, x, y, rad * 2.2); gr.addColorStop(0, `rgba(${r.col},${0.15 + 0.85 * a})`); gr.addColorStop(0.45, `rgba(${r.col},${0.05 + 0.45 * a})`); gr.addColorStop(1, `rgba(${r.col},0)`);
     g.fillStyle = gr; g.beginPath(); g.arc(x, y, rad * 2.2, 0, Math.PI * 2); g.fill();
     g.save(); g.strokeStyle = `rgba(${r.col},${0.25 + 0.75 * a})`; g.lineWidth = 3; if (r.deep) g.setLineDash([8, 7]); g.beginPath(); g.arc(x, y, 20 + 8 * a, 0, Math.PI * 2); g.stroke(); g.restore();
     if (a > 0.08) {
       const lx = x + r.lx * 70, ly = y + r.ly * 64;
-      g.save(); g.globalAlpha = smooth(a * 2); g.strokeStyle = `rgba(${r.col},0.8)`; g.lineWidth = 2; g.beginPath(); g.moveTo(x + r.lx * 24, y + r.ly * 20); g.lineTo(lx, ly); g.stroke(); g.restore();
-      chip(lx, ly, r.label + (r.deep ? ' ·' : ''), r.col, '#0a0d14', 26, r.lx > 0 ? 'left' : 'right', smooth(a * 2));
+      if (lab !== '') { g.save(); g.globalAlpha = smooth(a * 2); g.strokeStyle = `rgba(${r.col},0.8)`; g.lineWidth = 2; g.beginPath(); g.moveTo(x + r.lx * 24, y + r.ly * 20); g.lineTo(lx, ly); g.stroke(); g.restore(); }
+      if (lab !== '') chip(lx, ly, (lab || r.label) + (r.deep ? ' ·' : ''), r.col, '#0a0d14', 26, r.lx > 0 ? 'left' : 'right', smooth(a * 2));
     }
   }
   // signals
@@ -382,9 +395,9 @@ function brain(t) {
     let val = L.val;
     if (L.run) { const s = clamp(t - L.run[0], 0, L.run[1] - L.run[0]); val = `${s.toFixed(1)} s${t >= L.run[1] ? '  ✓' : ''}`; }
     const w = chip(W - 40, TOP + 100, `${L.text}:  ${val}`, L.col, '#04070c', 30, 'right', a);
-    if (L.prev) chip(W - 40, TOP + 150, L.prev, '120,140,170', '#04070c', 24, 'right', a);
+    if (L.prev) chip(W - 40, TOP + 150, L.prev, '255,77,94', '#1a0003', 24, 'right', a);
   }
-  g.save(); g.font = '700 22px BC'; g.fillStyle = 'rgba(255,255,255,0.45)'; g.fillText('SIMPLIFIED · DASHED = DEEP INSIDE', 40, TOP + 102); g.restore();
+  g.save(); g.font = '700 22px BC'; g.fillStyle = 'rgba(255,255,255,0.45)'; g.fillText('ILLUSTRATION, NOT A SCAN · SEE-THROUGH · DASHED = DEEP OR MIDLINE', 40, TOP + 102); g.restore();
 }
 
 // ---------------------------------------------------------------- the frame
@@ -397,12 +410,13 @@ const $ = (s) => hud.querySelector(s);
 const CARD = {
   intro: `<div class="k">BEHIND THE CURTAIN</div><div class="h">READ<br>THE ROOM</div><div class="s">Same guy, same room, twice.</div>
     <div class="two"><div><b class="w">TOP</b>what he does</div><div><b class="c">BOTTOM</b>what his brain does, at the same moment</div></div>
-    <div class="list"><div class="o">1 · Checked out</div><div class="i">2 · Locked in</div><div>3 · Faster every time</div></div>`,
+    <div class="list"><div class="o">1 · Checked out</div><div class="i">2 · Locked in</div><div>3 · Why he develops faster</div></div>`,
   flip: `<div class="k">REWIND</div><div class="h">SAME ROOM.<br><span style="color:var(--cyan)">LOCKED IN.</span></div>`,
   outro: `<div class="big"><em>Notice.</em></div><div class="big" style="margin-top:24px">Read.</div><div class="big" style="margin-top:24px">Adjust.</div><div class="big" style="margin-top:24px">Then get<br><em>creative.</em></div>
-    <div class="src">The brain is simplified: real social thinking spreads across many areas at once. Reading others' minds: mPFC and TPJ, Schurz et al. 2014 ·
-    Faces: fusiform face area, Kanwisher et al. 1997 · Social reward in the striatum: Izuma et al. 2008 · Conflict and error signals: anterior cingulate, Botvinick et al. 2004 ·
-    Habits: basal ganglia, Graybiel 2008 · Mind wandering and the default network: Mason et al. 2007 · Stages of skill learning: Fitts & Posner 1967</div>`,
+    <div class="src">The brain view is an illustration of areas that tend to be involved, not a scan. Mind wandering: Killingsworth & Gilbert 2010, Science 330:932 (46.9% of check-ins); Mason et al. 2007 ·
+    Weaker response to outside cues and feedback when off-task: Kam et al. 2011, J Cogn Neurosci 23:460; Kam et al. 2012, Front Hum Neurosci 6:329 · Thinking about others: mPFC and TPJ, Schurz et al. 2014;
+    overlap with the default network: Spreng et al. 2009 · Faces: Kanwisher et al. 1997 · Emotional faces: Fusar-Poli et al. 2009 · Social feedback in the striatum: Izuma et al. 2008 ·
+    Error signals and adjusting: Ridderinkhof et al. 2004 · Words before speech: Flinker et al. 2015 · Creative thinking: Beaty et al. 2016 · Practice and feedback: Blanch-Hartigan et al. 2012</div>`,
 };
 function cardAt(t) {
   if (t < O) return ['intro', 1 - smooth((t - (O - 0.35)) / 0.35)];

@@ -3,7 +3,8 @@
 2K-style gameplay clips and breakdowns, rendered from three.js and driven by real motion capture.
 
 - **Compilation:** every video below, v1 to v10, back to back in one portrait clip. [`out/compilation.mp4`](out/compilation.mp4) (5:27, 720×1280, 30 fps, H.264 + AAC; the landscape v1-v3 sit over a blurred fill)
-- **v11 (latest): film room, "Behind the Curtain".** A sharp player learns a new move (between the legs, cross, cross back, step-back) at rep 1, rep 3 and rep 6, then makes it his own live. Every rep plays as it looks in the gym, then the picture splits like a curtain onto what he's running behind it: his eyes, the steps fusing into chunks, his man's weight, his options. [`out/behind_the_curtain.mp4`](out/behind_the_curtain.mp4) (1080×1920 portrait, 30 fps, H.264 + AAC)
+- **v12 (latest): "Read the Room".** Not basketball: a split screen, what he does on top and what his brain does underneath at the same moment, as one guy walks up to three people mid-conversation, checked out and then locked in, and why the locked-in one develops faster. [`out/read_the_room.mp4`](out/read_the_room.mp4) (1080×1920 portrait, 30 fps, H.264 + AAC)
+- v11: film room, "Behind the Curtain". A sharp player learns a new move (between the legs, cross, cross back, step-back) at rep 1, rep 3 and rep 6, then makes it his own live. Every rep plays as it looks in the gym, then the picture splits like a curtain onto what he's running behind it: his eyes, the steps fusing into chunks, his man's weight, his options. [`out/behind_the_curtain.mp4`](out/behind_the_curtain.mp4) (1080×1920 portrait, 30 fps, H.264 + AAC)
 - v10: film room, "Shoot Over Him". An iso pull-up into a good contest, in three beats: gather the ball into both hands, set your feet with a 1-2, then rise straight up and release over his hand. Then the same iso pulled up without stopping, drifting into him. [`out/shoot_over_him.mp4`](out/shoot_over_him.mp4) (1080×1920 portrait, 30 fps, H.264 + AAC)
 - v9: film room, "Lockdown". You're the defender this time: staying down on the fake, mirroring a good ball handler's cross, and helping and recovering as a team, each ending in a contested miss. [`out/lockdown.mp4`](out/lockdown.mp4) (1080×1920 portrait, 30 fps, H.264 + AAC)
 - v8: film room, "Make Him Move". How a shooter who isn't fast or strong beats a quicker defender: head fake, shoulder fake, hesi pull-up, step-back, each into a pull-up over him, with the skeletons in the gym. [`out/make_him_move.mp4`](out/make_him_move.mp4) (1080×1920 portrait, 30 fps, H.264 + AAC)
@@ -29,6 +30,36 @@ It writes three files:
 - `clip_overlay.mp4`: the footage with the tracked skeleton drawn on it.
 - `clip_pose.mp4`: the skeleton alone on black, the pose-reference format that AI video tools take.
 - `clip.json`: per-frame 2D image landmarks with visibility, plus 3D world landmarks in metres around the hips.
+
+## v12: what it shows
+
+A 2D animated split screen. On top is what he does; underneath is what his brain does at the same moment. The brain
+is a see-through illustration of areas that tend to be involved, not a scan. Deep and midline areas are dashed.
+
+| Part | What he does | What his brain does |
+|---|---|---|
+| 1 · Checked out | On his phone, cuts her off, talks about himself, misses the eye-roll and the crossed arms, and gets closed out of the circle. | His inner thinking hubs are busy with his own stuff, so that's what comes out. Faces barely register, and when it goes wrong the "something's off" signal is weak, so he never adjusts. The loop never closes. |
+| 2 · Locked in | Takes in the faces first, catches that she got cut off and brings her in. Then he links her story to the guy who'd drifted to his phone, and it lands. | Faces, feelings, then what she's thinking: the same hubs, pointed at her. Planning puts it into words, and it lands as feedback. For the creative link, memory and the inner network work together with planning. |
+| 3 · Why he develops faster | The same read, closed again and again: loop 1, loop 10, loop 50. | Every loop that closes is feedback, and practice with feedback makes people more accurate at reading others. Checked out, he closes none. |
+
+What the research does and doesn't support, and how the video follows it:
+
+- **Mind wandering:** Killingsworth & Gilbert 2010 (Science 330:932) used random phone check-ins with 2,250 adults. Minds wandered in 46.9% of them, and in at least 30% during every activity except one, conversation included. Mind wandering goes with the default network (Mason et al. 2007; Christoff et al. 2009).
+- **"Checked out" is not "the social brain switched off":** the default network overlaps heavily with the network for thinking about others (Spreng, Mar & Kim 2009). What the evidence supports when you're off task is weaker responses to outside cues and to feedback. That covers sights and sounds (Kam et al. 2011), faces (Denkova et al. 2018) and feedback (Kam et al. 2012). So the video shows the same hubs pointed inward, and the outside signals faint.
+- **Reading others:** thinking about what others think engages the medial prefrontal cortex and the temporoparietal junction (Schurz et al. 2014; Molenberghs et al. 2016). Faces: the fusiform face area (Kanwisher et al. 1997). Emotional faces: the amygdala (Fusar-Poli et al. 2009).
+- **Feedback and adjusting:** signals for errors and worse-than-expected outcomes in the medial frontal cortex are linked to adjusting what you do next (Ridderinkhof et al. 2004). Social approval activates the striatum (Izuma et al. 2008).
+- **Words:** Broca's area helps plan words just before you speak (Flinker et al. 2015).
+- **Creativity:** the default and executive control networks tend to cooperate during creative thinking (Beaty et al. 2016).
+- **Getting better:** practice with feedback improves how accurately people read others (Blanch-Hartigan et al. 2012). There is no good evidence that it makes them faster, so part 3 counts loops closed, not seconds.
+
+## How v12 is made
+
+- **Page:** a 2D canvas, no 3D.
+  - The people are drawn from keyframed poses: gaze, brows, eyelids, mouth, crossed arms, phone, gestures and laughing. Their arms reach with a two-bone solve.
+  - Speech bubbles pop in.
+  - The brain is a spline outline with folds. Regions glow by activity, signals travel along curves between them, and networks are drawn as one while they work together.
+- **Sound:** `tools/audio_room.py`: room tone, a group murmur, bubble pops, a short tone per brain signal, a buzz for "something's off" and a bell when something lands.
+- **Files:** `src/main12.js`, `src/hud12.css`, `src/index12.html`, `tools/audio_room.py`.
 
 ## v11: what it shows
 
@@ -364,6 +395,8 @@ A right-wing isolation with the clock running out and your team down two.
 npm install
 pip install pillow numpy scipy imageio-ffmpeg trimesh networkx mediapipe
 npm run assets      # Rocketbox models + uniforms, CMU mocap clips
+npm run preview:v12 # quick 540x960 check of v12
+npm run render:v12  # final 1080x1920 v12 with audio -> out/read_the_room.mp4
 npm run preview:v11 # quick 540x960 check of v11
 npm run render:v11  # final 1080x1920 v11 with audio -> out/behind_the_curtain.mp4
 npm run preview:v10 # quick 540x960 check of v10
